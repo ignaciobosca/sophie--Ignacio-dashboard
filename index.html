@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test - Sophie Dashboard</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;max-width:640px;margin:40px auto;padding:0 20px;color:#111}
+.card{border:1px solid #e2e2e2;border-radius:14px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.ok{color:#0a7d33;font-weight:700;margin-top:0}
+code{background:#f4f4f4;padding:2px 7px;border-radius:5px}
+button{font-size:1em;padding:8px 16px;border-radius:8px;border:1px solid #ccc;cursor:pointer;background:#fafafa}
+</style>
+</head>
+<body>
+<div class="card">
+<h1 class="ok">GitHub Pages funcionando</h1>
+<p>Esta pagina fue publicada por una Routine con el repo adjunto, sin ningun tap de permiso.</p>
+<p>Version: <code>v1</code></p>
+<hr>
+<p>Reloj en vivo (prueba de JS): <strong><span id="clock">...</span></strong></p>
+<p><button id="btn">Clickeame</button> <span id="count">0 clicks</span></p>
+</div>
+<script>
+let n=0;
+var clk=document.getElementById('clock');
+function tick(){clk.textContent=new Date().toLocaleTimeString('es-AR');}
+tick();setInterval(tick,1000);
+document.getElementById('btn').onclick=function(){n++;document.getElementById('count').textContent=n+' clicks';};
+</script>
+</body>
+</html>
