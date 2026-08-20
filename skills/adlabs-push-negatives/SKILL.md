@@ -3,15 +3,15 @@ name: adlabs-push-negatives
 description: >
   Empuja y aplica términos/ASINs a negativizar directo en campañas de Amazon Ads vía el conector
   AdLabs. Pegás la lista y el destino, y el skill crea negativos a nivel AD GROUP (Exact/Phrase para
-  keywords, Product Target para ASINs) y los aplica a Amazon en la misma pasada (auto-apply). El
+  keywords, Product Target para ASINs) y los aplica a Amazon (auto-apply). El
   destino puede ser una campaña/ad group nombrado, un patrón de nombre ("todas menos las que tienen
-  X"), o las campañas que anuncian un ASIN/producto. NUNCA aplica a todo sin destino: si no das ni
-  lista ni regla, para y pregunta. A diferencia de daily-negatives / negative-targeting (que solo
+  X"), las que anuncian un ASIN/producto, o una categoría/tipo de producto ("las de jabones sólidos").
+  NUNCA aplica a todo sin destino: si no das ni lista ni regla, para y pregunta. A diferencia de daily-negatives / negative-targeting (que solo
   IDENTIFICAN y arman listas para copiar), este hace el PUSH vía MCP. Trigger:
   "negativizá estos términos en [campaña]", "empujá/aplicá estos negativos en AdLabs", "aplicá esta
   lista en phrase a todas las campañas menos las que tienen X", "en exact a las que anuncian el ASIN
-  B0…", o pegar términos/ASINs (incluido el bloque de daily-negatives) para cargarlos como negativos.
-  NO usar para DESCUBRIR qué negativizar ni para harvesting positivo.
+  B0…", o pegar términos/ASINs para cargarlos como negativos. NO usar para DESCUBRIR qué negativizar
+  ni para harvesting positivo.
 ---
 
 # AdLabs — Push Negatives (aplicar negativos a Amazon)
@@ -32,8 +32,8 @@ para el modelo, pero la conversación con Nacho es en español.
 1. **El destino tiene que ser explícito. NUNCA apliques "a todas" por defecto o por accidente.**
    El destino se puede expresar de dos formas, y ambas son válidas:
    - una **lista de nombres** de campaña/ad group, o
-   - una **regla de selección** (patrón de nombre / exclusión, o ASIN/producto anunciado — ver
-     "Targeting modes").
+   - una **regla de selección** (patrón de nombre / exclusión, ASIN/producto anunciado, o categoría/
+     tipo de producto — ver "Targeting modes").
 
    Si Nacho **no da ni una lista ni una regla** (p.ej. solo pega términos sin decir a dónde),
    **pará y preguntá** cuáles campañas/ad groups. Un destino faltante jamás significa "todas".
@@ -58,7 +58,12 @@ para el modelo, pero la conversación con Nacho es en español.
    types, cuántos negativos) *antes* del apply, para que quede el registro y puedas frenarlo si
    ves algo raro. Excepción: **modo dry-run** (ver abajo) frena antes del apply.
 
-5. **`note` significativa siempre.** El `apply` exige un `note` para el audit log. Usá algo como:
+5. **Solo ENABLED, siempre.** Toda fetch de ad groups lleva `CAMPAIGN_STATE=ENABLED` +
+   `AD_GROUP_STATE=ENABLED`. Nunca apliques negativos a campañas/ad groups pausados o archivados
+   (no tiene sentido gastar en negativizar lo que no corre, y achica el set). Única excepción:
+   Nacho lo pide explícito ("incluí las pausadas").
+
+6. **`note` significativa siempre.** El `apply` exige un `note` para el audit log. Usá algo como:
    `"MCP push: N negativos AD_GROUP (exact+phrase) en <campaña/ad groups> — pedido por Nacho, <fecha>"`.
 
 ---
@@ -105,6 +110,28 @@ los negativos a nivel ad group. Se pueden combinar (ej. exclusión + ASIN). Siem
      vía `get_entity_data(entity_type="advertised_product", filters: PRODUCT_TITLE LIKE … / AD_SKU …)`
      y usá esos ASINs en `CONTAINS_ASINS`.
 
+**D. Categoría / tipo de producto** — "las campañas de jabones sólidos", "solo las de tal línea".
+   AdLabs **no** conoce categorías (solo ASINs, nombres y tags), así que hay que *definir* la
+   categoría con una de estas fuentes, en orden de preferencia:
+   1. **Nombre** — si las campañas/ad groups nombran el tipo (ej. "…Jabón Sólido…"), es un mode B
+      (`CAMPAIGN_NAME LIKE`). El más limpio; probá esto primero.
+   2. **Tag / Data Group** — si HEKAYA tiene un tag de producto para esa categoría, resolvé su ID con
+      el tool `tags` y filtrá la fetch de `ad_group`/`advertised_product` por `PRODUCT_DATA_GROUP_ITEM`.
+   3. **Resolver ASINs** — conseguí los ASINs de la categoría (por `advertised_product` con
+      `PRODUCT_TITLE LIKE`, o cruzando con el catálogo de Sophie Hub) y usalos en `CONTAINS_ASINS`.
+
+   **Matiz "SOLO contengan X"** (exclusividad): "contiene el ASIN/categoría" ≠ "solo contiene esa
+   categoría". Si Nacho dice "que **solo** contengan jabones sólidos", después de traer los ad groups
+   candidatos tenés que **descartar** los que además anuncian productos de otra categoría: revisá los
+   ASINs anunciados de cada ad group (via `advertised_product` filtrado por esos ad groups, o
+   `AD_GROUP_TOTAL_PRODUCTS`) y quedate solo con los exclusivos. Reportá cuántos descartaste por mezcla.
+
+   **Regla clave del mode D:** como la categoría es una *inferencia*, **declará siempre cómo la
+   definiste** (qué patrón de nombre / tag / lista de ASINs usaste) y listá las campañas resueltas en
+   el resumen antes de aplicar. Si **no** podés resolverla con confianza (no hay patrón, ni tag, ni
+   títulos claros) → tratala como destino faltante: **preguntá**, no adivines. Un mapeo de categoría
+   mal inferido mete negativos en campañas equivocadas.
+
 Después de resolver, **leé la reference** (`read`) y mostrá cuántas campañas / ad groups quedaron
 y sus nombres (o los primeros N + total) en el resumen del Paso 6. Si son 0 filas, avisá y par
 — no apliques sobre una selección vacía (probablemente el patrón/ASIN está mal escrito).
@@ -128,9 +155,11 @@ Corré esto al empezar, en este orden:
 Extraé del mensaje (y del bloque pegado):
 
 - **Brand / cuenta** (para resolver el profile). Si hay ambigüedad multi-marketplace, preguntá cuál.
-- **Destino** — identificá cuál de los targeting modes (A/B/C, o combinación) está usando Nacho:
-  - **A** lista de nombres · **B** patrón/exclusión de nombre · **C** ASIN/producto anunciado.
-  - **Si no hay ni lista ni regla → Paso 2b (parar y preguntar).**
+- **Destino** — identificá cuál de los targeting modes (A/B/C/D, o combinación) está usando Nacho:
+  - **A** lista de nombres · **B** patrón/exclusión de nombre · **C** ASIN/producto anunciado ·
+    **D** categoría/tipo de producto ("las de jabones sólidos", "solo las de tal línea").
+  - **Si no hay ni lista ni regla → Paso 2b (parar y preguntar).** Si es mode D y no podés definir
+    la categoría con confianza (nombre/tag/ASINs), también parás y preguntás (ver "Targeting modes").
 - **Términos:** las líneas de la lista. Separá en:
   - **ASINs** → cualquier token tipo `B0XXXXXXXX` (10 chars, empieza con B0) o que Nacho marque como ASIN/product target.
   - **Keywords** → todo lo demás (search terms / palabras).
@@ -305,6 +334,17 @@ ASIN B08XYZ1234: [lista]"*.
 - `read` la ref → p.ej. 6 ad groups en 4 campañas.
 - Preview con `keywords=[lista]`, `match_types=["AD_GROUP_NEGATIVE_EXACT"]`.
 - Resumen + auto-apply + recibo.
+
+**Ejemplo 3 — categoría/tipo de producto, "solo contengan" + phrase (HEKAYA):**
+Input: *"En HEKAYA aplicá términos negativos en phrase a las campañas que solo contengan jabones
+sólidos: [lista]"*.
+- Mode D. Definí "jabón sólido" (probá en orden): ¿el nombre de campaña lo dice? → `CAMPAIGN_NAME LIKE`.
+  ¿Hay tag de producto? → `PRODUCT_DATA_GROUP_ITEM`. Si no, resolvé los ASINs de jabón sólido por
+  título / catálogo Sophie Hub → `CONTAINS_ASINS`.
+- **Declará** la definición usada ("campañas con 'Jabón Sólido' en el nombre" / "tag #42" / "8 ASINs").
+- Aplicá el matiz **"solo"**: descartá los ad groups que además anuncian otra categoría.
+- `read` la ref, listá las campañas resueltas. Si la categoría no se puede definir con confianza → **preguntá**.
+- Preview `match_types=["AD_GROUP_NEGATIVE_PHRASE"]` → resumen (con la definición) → auto-apply → recibo.
 
 ## Errores comunes y cómo evitarlos
 
