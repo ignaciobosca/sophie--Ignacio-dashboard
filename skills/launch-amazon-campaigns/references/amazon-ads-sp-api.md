@@ -117,6 +117,8 @@ arguments = {
 
 **Placement enum:** `TOP_OF_SEARCH`, `REST_OF_SEARCH`, `PRODUCT_PAGE`, `HOME_PAGE`. `percentage` is an integer (e.g. `30` = +30%).
 
+> The schema also exposes `audienceBidAdjustments` and `shopperSegmentBidAdjustments`. These are **Sponsored Display / DSP** features — **not Sponsored Products**. Do NOT set them for SP campaigns. Audience modifiers like "high interest" belong to the future SB/SD extension.
+
 ### B2. `campaign_management-create_ad_group`
 
 ```jsonc
@@ -161,6 +163,7 @@ arguments = {
 ```
 
 - **Sellers must advertise by SKU.** Resolve each ASIN → SKU via `mcp__Sophie_Hub__get_product_catalog` (or `get_product_catalog_bulk`) for the store before this call. If a SKU can't be found, flag that ASIN and skip it (report at the end).
+- **One ASIN can have several SKUs.** Prefer the active, in-stock, FBA offer; if two live offers remain, ask the user which SKU to advertise — never guess (see SKILL.md Step 4). Send one `create_ad` per SKU you actually advertise.
 
 ### B4. `campaign_management-create_target` (batch keywords/products WITH per-keyword bids)
 

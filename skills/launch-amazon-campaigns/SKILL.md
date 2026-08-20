@@ -84,7 +84,12 @@ For each campaign, ask (reuse earlier answers as defaults so he isn't re-asked n
 7. **Bid strategy:** default **Dynamic bids – down only** (`SALES_DOWN_ONLY`); offer to
    switch to up-and-down or fixed.
 8. **Placements:** **ask every time** — the % for Top of Search and Rest of Search
-   (and Product pages if he wants). 0 = no adjustment.
+   (and Product pages if he wants). 0 = no adjustment. Note: Sponsored Products only
+   supports **placement** bid modifiers. Audience modifiers ("high interest", in-market,
+   remarketing/views, etc.) do **not** exist in SP — they belong to Sponsored
+   Display/DSP. If Nacho asks for an audience % modifier, say it's out of scope for SP
+   and flag it as the natural add for the future SB/SD extension; don't fake it with a
+   placement.
 9. **Negatives (optional):** offer to add negative keywords / negative ASINs; he can skip
    with enter. Ask match type (Exact/Phrase for negative keywords).
 10. **Activation date:** default **tomorrow**; let him pick another date. Confirm the
@@ -94,15 +99,29 @@ For each campaign, ask (reuse earlier answers as defaults so he isn't re-asked n
 Before the summary, fill in suggested bids for every keyword (see *Bidding* below).
 
 ### Step 4 — Resolve products (sellers)
-For each advertised ASIN, resolve the **SKU** via `mcp__Sophie_Hub__get_product_catalog`
-(or `get_product_catalog_bulk`). Product ads for sellers use SKU. If a SKU is missing,
-flag that ASIN and keep going (report at the end).
+Seller product ads are created **by SKU**, and one ASIN can have **several SKUs**
+(FBA + FBM, replens, relisted offers). Advertising the wrong SKU advertises the wrong
+offer, so resolve carefully:
+
+1. Enumerate the SKUs for each advertised ASIN. `get_product_catalog` /
+   `get_product_catalog_bulk` returns the snapshot SKU; when an ASIN may have more than
+   one SKU, cross-check a listings/inventory source (e.g. Helium10 `list_my_products` /
+   FBA inventory, or `list_top_products` which carries the selling `sku`).
+2. **One SKU** → use it.
+3. **Several SKUs** → prefer the **active, in-stock, FBA** offer. If it's still ambiguous
+   (e.g. two live FBA SKUs), **show Nacho the candidates (SKU, fulfillment, stock) and let
+   him pick** — never guess silently.
+4. If no SKU can be resolved, flag that ASIN and keep going (report at the end).
 
 ### Step 5 — Global summary + single OK
 Print one compact summary of **all** campaigns: name, type, marketplace, budget, bid
 strategy, placement adjustments, activation date, advertised products, and the target
-list with per-target match type and bid (and negatives). Then ask for **one final
-confirmation** to create everything. Do not create before this OK.
+list with per-target match type, **search volume**, and bid (and negatives). Then ask
+for **one final confirmation** to create everything. Do not create before this OK.
+
+**Rendering:** campaign names contain `|` (the Sophie convention), which breaks Markdown
+tables. Always show each full campaign name on its own line or in a code block — never
+inside a piped table — so it's never truncated.
 
 ### Step 6 — Create (after OK)
 Create each campaign using `references/amazon-ads-sp-api.md`:
@@ -147,8 +166,11 @@ Amazon's own "suggested bid" endpoint is **not** available through our tools, so
 chain and take the first source that returns a CPC for the keyword:
 
 1. **Helium10 Cerebro** — `mcp__Helium10__analyze_keywords({ keywords:[...], marketplace })`
-   returns a per-keyword **CPC**. Batch up to 200 keywords per call. This is the primary,
-   cleanest source. (`mcp__Helium10__get_keywords_by_keyword` also returns CPC for a seed.)
+   returns a per-keyword **`suggested_bid_usd`** (use this as the bid) plus `search_volume`
+   (show it next to the bid for context). Batch up to 200 keywords per call. This is the
+   primary, cleanest source. If `suggested_bid_usd` is absent for a row, fall back to any
+   CPC field on that row, then to the chain below. (`mcp__Helium10__get_keywords_by_keyword`
+   also returns these for a seed.) Match rows by the `phrase` field — output order ≠ input order.
 2. **Shurq** — fall back to the account's own historical CPC for keywords already seen.
    Discover the right tool via `mcp__SHURQ_-_NEW__get_schema` / `search`, then `execute`.
 3. **DataDive** — `mcp__Sophie_Hub__sophie_list_datadive_tools` then
