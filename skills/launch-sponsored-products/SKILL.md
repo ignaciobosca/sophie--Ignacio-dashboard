@@ -1,22 +1,22 @@
 ---
-name: launch-amazon-campaigns
+name: launch-sponsored-products
 description: >-
-  Launch live Amazon Sponsored Products (SP) campaigns by API through a guided,
-  question-by-question intake. Use whenever Nacho wants to CREATE, LAUNCH,
-  ACTIVATE, or SET UP one or more Amazon PPC / Sponsored Products campaigns —
-  e.g. "lanzá una campaña", "lanzar campañas en Amazon", "crear una campaña SP",
-  "armar una campaña de PPC", "activá esta campaña", "nueva campaña para [ASIN]",
-  "launch a campaign", "create SP campaigns", "set up PPC for [brand]", or any
-  request to push auto/manual keyword/product-targeting campaigns live. Asks for
-  everything Amazon needs (store, marketplace, targeting type, ASINs, budget,
-  keywords, bids, placements, negatives, activation date), suggests
-  Sophie-convention names and Helium10-based bids, shows a summary, and creates
-  only after one final OK. Creates entities LIVE via the Amazon Ads API — the
-  right skill to actually launch/activate, NOT to generate a bulk upload file
-  (that is sp-bulk-builder) or audit/optimize existing campaigns.
+  Launch live Amazon Sponsored Products (SP) ONLY campaigns by API through a
+  guided, question-by-question intake. Does NOT launch Sponsored Brands or
+  Sponsored Display (their creatives aren't creatable via our tools). Use
+  whenever Nacho wants to CREATE, LAUNCH, ACTIVATE, or SET UP Amazon Sponsored
+  Products campaigns — e.g. "lanzá una campaña", "lanzar campañas en Amazon",
+  "crear una campaña SP", "armar una campaña de PPC", "activá esta campaña",
+  "nueva campaña para [ASIN]", "launch a campaign", "create SP campaigns", "set
+  up PPC for [brand]", or any request to push auto/manual keyword or
+  product-targeting campaigns live. Asks for everything Amazon needs (store,
+  marketplace, targeting, ASINs, budget, keywords, bids, placements, negatives,
+  activation date), suggests Sophie-convention names and Helium10 bids, shows a
+  summary, and creates only after one final OK. NOT sp-bulk-builder (that makes
+  an XLSX) and not for auditing or optimizing existing campaigns.
 ---
 
-# Launch Amazon Campaigns (Sponsored Products, live via API)
+# Launch Sponsored Products (SP only, live via API)
 
 This skill walks Nacho through launching one or more **Sponsored Products** campaigns
 and creates them **live via the Amazon Ads API**. Nothing is created until a single
@@ -24,8 +24,11 @@ final confirmation. Think of yourself as a careful media buyer sitting next to h
 ask what's needed, suggest sensible defaults, never touch the account without the OK.
 
 **Scope:** Sponsored Products only (Auto, Manual-keyword, Manual-product/ASIN targeting).
-Not Sponsored Brands/Display yet. This is *not* `sp-bulk-builder` (that produces an XLSX
-to upload by hand); here we create entities by API.
+**Sponsored Brands and Sponsored Display are deliberately out of scope** — their creatives
+require an Amazon Ads asset library / brand tooling that isn't exposed to us, so they
+can't be launched end-to-end by API. If Nacho asks to launch SB or SD, say so plainly and
+point him to the Ads console for those. This is also *not* `sp-bulk-builder` (that produces
+an XLSX to upload by hand); here we create entities by API.
 
 **Writes are restricted to Sophie Society staff.** Nacho qualifies. If a write is
 rejected as unauthorized, report it plainly — don't try to work around it.
@@ -92,9 +95,8 @@ For each campaign, ask (reuse earlier answers as defaults so he isn't re-asked n
    (and Product pages if he wants). 0 = no adjustment. Note: Sponsored Products only
    supports **placement** bid modifiers. Audience modifiers ("high interest", in-market,
    remarketing/views, etc.) do **not** exist in SP — they belong to Sponsored
-   Display/DSP. If Nacho asks for an audience % modifier, say it's out of scope for SP
-   and flag it as the natural add for the future SB/SD extension; don't fake it with a
-   placement.
+   Display/DSP, which this skill does not cover. If Nacho asks for an audience % modifier,
+   say it's out of scope (SP only) and don't fake it with a placement.
 9. **Negatives (optional):** offer to add negative keywords / negative ASINs; he can skip
    with enter. Ask match type (Exact/Phrase for negative keywords).
 10. **Activation date:** default **tomorrow**; let him pick another date. Confirm the
@@ -198,8 +200,9 @@ suggested bid in the summary so he knows where the number came from.
 - Store & product data: Sophie Hub (`list_stores`, `get_product_catalog`).
 - Keyword CPC: Helium10 Cerebro (primary).
 - Never generate an XLSX here — that's `sp-bulk-builder`. This skill only creates live.
-- If Nacho asks for Sponsored Brands/Display, say those aren't covered yet and offer to
-  scope them as a follow-up.
+- If Nacho asks for Sponsored Brands/Display, say those are out of scope: their creatives
+  need an asset library / brand tooling that isn't available to us, so point him to the
+  Ads console for SB/SD instead of starting a flow that can't finish.
 
 ## Dry-run
 
