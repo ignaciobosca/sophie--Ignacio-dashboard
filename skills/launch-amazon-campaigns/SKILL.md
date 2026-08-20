@@ -72,7 +72,13 @@ For each campaign, ask (reuse earlier answers as defaults so he isn't re-asked n
 
 1. **Targeting type:** Auto · Manual keywords · Manual product/ASIN targeting.
 2. **ASIN(s) to advertise:** he pastes them. (For sellers you'll resolve ASIN→SKU later.)
-3. **Campaign name:** propose one using the **Sophie convention** (below) and let him edit.
+3. **Campaign name — confirm the theme first.** For manual keyword campaigns the name
+   carries a `[Theme]` (see convention below): the semantic cluster the keywords belong to.
+   Don't silently invent it. **Suggest** a theme inferred from the keyword list, show it,
+   and ask Nacho to confirm or edit it (he may also split a heterogeneous list into
+   several themes → several campaigns). If the pasted keywords clearly span more than one
+   topic (e.g. "hair growth serum" vs "scalp serum"), point that out and offer to split.
+   Only after the theme is confirmed, assemble and show the full name for a final edit.
 4. **Daily budget.**
 5. **Targets** (skip for Auto):
    - He pastes the keyword list (or ASINs for product targeting).
@@ -154,6 +160,10 @@ Campaign-type strings:
 - Brand: `SPM | Brand [Theme] | Broad|Phrase|Exact` · `SPM | Brand Only`
 - Product targeting: `SPM | PT | [Competitor Brand] | Exact` · `SPM | PT | [Competitor Brand] | Expanded`
 - Catch-all: `Catch All | 10 cents`
+
+`[Theme]` is the keyword cluster label (e.g. "Hair Growth", "Scalp Care"), not the
+product or match type. Each theme becomes a campaign, split by match type. Suggest the
+theme from the keywords and have Nacho confirm/edit it (Step 2.3) before building the name.
 
 Always show the suggested name and let Nacho edit before it's locked in.
 
