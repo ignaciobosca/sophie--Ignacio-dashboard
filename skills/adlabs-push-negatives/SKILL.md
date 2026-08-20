@@ -1,18 +1,17 @@
 ---
 name: adlabs-push-negatives
 description: >
-  Empuja y aplica términos/ASINs a negativizar directamente en campañas de Amazon Ads
-  vía el conector AdLabs. Pegás una lista de search terms / palabras / ASINs y el destino
-  (campaña o ad group), y el skill los crea como negativos a nivel AD GROUP (Exact + Phrase
-  para keywords, Product Target para ASINs) y los aplica a Amazon en la misma pasada
-  (auto-apply). NUNCA aplica a todas las campañas: si no le das destino, para y pregunta.
-  A diferencia de daily-negatives y negative-targeting (que solo IDENTIFICAN candidatos y
-  arman listas para copiar a mano), este hace el PUSH final vía MCP. Trigger: "negativizá estos
-  términos en [campaña]", "empujá estos negativos a [Brand]", "aplicá estos negativos en AdLabs",
-  "push these negatives", "agregá estos negativos a la campaña X", o pegar una lista de
-  términos/ASINs (incluido el bloque copy-paste de
-  daily-negatives / negative-targeting) para cargar como negativos en campañas concretas.
-  NO usar para DESCUBRIR qué negativizar ni para harvesting de keywords positivas.
+  Empuja y aplica términos/ASINs a negativizar directo en campañas de Amazon Ads vía el conector
+  AdLabs. Pegás la lista y el destino, y el skill crea negativos a nivel AD GROUP (Exact/Phrase para
+  keywords, Product Target para ASINs) y los aplica a Amazon en la misma pasada (auto-apply). El
+  destino puede ser una campaña/ad group nombrado, un patrón de nombre ("todas menos las que tienen
+  X"), o las campañas que anuncian un ASIN/producto. NUNCA aplica a todo sin destino: si no das ni
+  lista ni regla, para y pregunta. A diferencia de daily-negatives / negative-targeting (que solo
+  IDENTIFICAN y arman listas para copiar), este hace el PUSH vía MCP. Trigger:
+  "negativizá estos términos en [campaña]", "empujá/aplicá estos negativos en AdLabs", "aplicá esta
+  lista en phrase a todas las campañas menos las que tienen X", "en exact a las que anuncian el ASIN
+  B0…", o pegar términos/ASINs (incluido el bloque de daily-negatives) para cargarlos como negativos.
+  NO usar para DESCUBRIR qué negativizar ni para harvesting positivo.
 ---
 
 # AdLabs — Push Negatives (aplicar negativos a Amazon)
@@ -30,26 +29,34 @@ para el modelo, pero la conversación con Nacho es en español.
 
 ## Reglas de oro (no negociables)
 
-1. **NUNCA aplicar a todas las campañas de la cuenta.** El destino (campaña/s o ad group/s)
-   tiene que ser **explícito**. Si el mensaje de Nacho no nombra un destino concreto, **pará
-   y preguntá** cuáles campañas o ad groups. Un destino faltante jamás significa "todas".
-   Esta es la única red de seguridad del modo auto-apply, y es sagrada porque un negativo mal
-   dirigido apaga tráfico que sí convierte.
+1. **El destino tiene que ser explícito. NUNCA apliques "a todas" por defecto o por accidente.**
+   El destino se puede expresar de dos formas, y ambas son válidas:
+   - una **lista de nombres** de campaña/ad group, o
+   - una **regla de selección** (patrón de nombre / exclusión, o ASIN/producto anunciado — ver
+     "Targeting modes").
+
+   Si Nacho **no da ni una lista ni una regla** (p.ej. solo pega términos sin decir a dónde),
+   **pará y preguntá** cuáles campañas/ad groups. Un destino faltante jamás significa "todas".
+   Esta es la red de seguridad del modo auto-apply, y es sagrada porque un negativo mal dirigido
+   apaga tráfico que sí convierte. Una regla amplia (ej. "todas menos SCAVENGER") **sí** es un
+   destino explícito y se ejecuta — pero siempre resolviendo y mostrando el set exacto primero.
 
 2. **Nivel = AD GROUP por defecto** (`AD_GROUP_NEGATIVE_*`). Es el default que eligió Nacho:
    sirve igual para Sponsored Products y Sponsored Brands, y es más quirúrgico que campaign-level.
    Solo usá `CAMPAIGN_NEGATIVE_*` si Nacho lo pide explícito (y ojo: campaign-level solo existe
    en SP, no en SB).
 
-3. **Match types por defecto:**
-   - Keywords → `AD_GROUP_NEGATIVE_EXACT` + `AD_GROUP_NEGATIVE_PHRASE`.
-   - ASINs (product targets) → `AD_GROUP_NEGATIVE_PRODUCT_TARGET`.
-   Respetá overrides si Nacho los da ("solo exact", "solo phrase", "a nivel campaña", "broad").
+3. **Match types — respetá lo que pida Nacho; si no dice nada, usá el default:**
+   - Si dice **"en phrase"** → solo `AD_GROUP_NEGATIVE_PHRASE`. Si dice **"en exact"** → solo
+     `AD_GROUP_NEGATIVE_EXACT`. Si dice **"broad"** → `AD_GROUP_NEGATIVE_BROAD` (solo SP).
+   - Default (no especifica) para keywords → `AD_GROUP_NEGATIVE_EXACT` + `AD_GROUP_NEGATIVE_PHRASE`.
+   - ASINs (product targets) → siempre `AD_GROUP_NEGATIVE_PRODUCT_TARGET`.
 
-4. **Auto-apply.** El flujo va derecho: preview → resumen → apply, sin pausa de confirmación.
-   PERO siempre imprimí el resumen exacto (cuántos negativos, en qué ad groups, qué match types)
-   *antes* del apply, para que quede el registro. Excepción: **modo dry-run** (ver abajo) frena
-   antes del apply.
+4. **Auto-apply, también en bulk.** El flujo va derecho: preview → resumen → apply, sin pausa de
+   confirmación, **incluso cuando el destino es una regla amplia** que toca muchos ad groups.
+   PERO siempre imprimí el resumen exacto (qué campañas/ad groups resolvió, cuántos, qué match
+   types, cuántos negativos) *antes* del apply, para que quede el registro y puedas frenarlo si
+   ves algo raro. Excepción: **modo dry-run** (ver abajo) frena antes del apply.
 
 5. **`note` significativa siempre.** El `apply` exige un `note` para el audit log. Usá algo como:
    `"MCP push: N negativos AD_GROUP (exact+phrase) en <campaña/ad groups> — pedido por Nacho, <fecha>"`.
@@ -65,6 +72,42 @@ para el modelo, pero la conversación con Nacho es en español.
   **primera vez** que corras contra una campaña nueva si tenés cualquier duda sobre el destino.
 
 ---
+
+## Targeting modes (cómo Nacho nombra el destino)
+
+Todos resuelven a una **reference de `ad_group`** (con `ad_group_id`), que es lo que necesitan
+los negativos a nivel ad group. Se pueden combinar (ej. exclusión + ASIN). Siempre filtrá a
+`CAMPAIGN_STATE=ENABLED` + `AD_GROUP_STATE=ENABLED` y agregá un `DATE` (últimos 14 días) porque
+`ad_group` es entidad con métricas.
+
+**A. Lista de nombres** — "en la campaña *SP - Exact - Core*", "en el ad group X".
+   → filtro `CAMPAIGN_NAME` (LIKE) y/o `AD_GROUP_NAME` (LIKE), o `CAMPAIGN_ID`/`AD_GROUP_ID` si los tenés.
+
+**B. Patrón de nombre / exclusión** — "todas las campañas menos las que tienen SCAVENGER",
+   "las que empiezan con SP", "todas las que digan Brand".
+   → **exclusión:** `CAMPAIGN_NAME_NOT` con operador `NOT_LIKE` (ej. value `"SCAVENGER"`).
+   → **inclusión por patrón:** `CAMPAIGN_NAME` con `LIKE`.
+   Ejemplo de filtro de exclusión:
+   `{"key":"CAMPAIGN_NAME_NOT","conditions":[{"operator":"NOT_LIKE","values":["SCAVENGER"]}]}`
+   Podés combinar varias exclusiones agregando condiciones con `"logical_operator":"AND"`.
+
+**C. Producto anunciado (ASIN / feature product)** — "las campañas que anuncian el ASIN B0…",
+   "donde tengo como feature product tal ASIN/producto".
+   El ASIN vive a nivel ad group (los product ads están en el ad group), así que:
+   - **Default (elegido por Nacho): solo los ad groups que anuncian ese ASIN.** Filtro `CONTAINS_ASINS`
+     en la fetch de `ad_group`:
+     `{"key":"CONTAINS_ASINS","conditions":[{"operator":"IN","values":["B07PGL2N7J"]}]}`
+   - **Variante "toda la campaña"** (solo si Nacho lo pide explícito, ej. "a toda la campaña que
+     anuncie X"): resolvé primero los ad groups con `CONTAINS_ASINS` (ref R1), después traé todos
+     los ad groups de esas campañas pasando la ref como `CAMPAIGN_ID IN <R1>`
+     (`CAMPAIGN_ID` acepta una reference URI `mcp://data/...` como `values`).
+   - Si Nacho da un **nombre de producto o SKU** en vez de un ASIN, resolvé primero el/los ASIN
+     vía `get_entity_data(entity_type="advertised_product", filters: PRODUCT_TITLE LIKE … / AD_SKU …)`
+     y usá esos ASINs en `CONTAINS_ASINS`.
+
+Después de resolver, **leé la reference** (`read`) y mostrá cuántas campañas / ad groups quedaron
+y sus nombres (o los primeros N + total) en el resumen del Paso 6. Si son 0 filas, avisá y par
+— no apliques sobre una selección vacía (probablemente el patrón/ASIN está mal escrito).
 
 ## Startup (siempre)
 
@@ -85,11 +128,17 @@ Corré esto al empezar, en este orden:
 Extraé del mensaje (y del bloque pegado):
 
 - **Brand / cuenta** (para resolver el profile). Si hay ambigüedad multi-marketplace, preguntá cuál.
-- **Destino:** nombre(s) de campaña o de ad group. **Si no hay destino explícito → Paso 2b (parar y preguntar).**
+- **Destino** — identificá cuál de los targeting modes (A/B/C, o combinación) está usando Nacho:
+  - **A** lista de nombres · **B** patrón/exclusión de nombre · **C** ASIN/producto anunciado.
+  - **Si no hay ni lista ni regla → Paso 2b (parar y preguntar).**
 - **Términos:** las líneas de la lista. Separá en:
   - **ASINs** → cualquier token tipo `B0XXXXXXXX` (10 chars, empieza con B0) o que Nacho marque como ASIN/product target.
   - **Keywords** → todo lo demás (search terms / palabras).
-- **Overrides de match type / nivel** si los menciona.
+  - Ojo: no confundas un ASIN que es **destino** (mode C, "campañas que anuncian B0…") con un ASIN
+    que es **término a negativizar** (product target negativo). El contexto lo aclara: "campañas
+    que anuncian X" = destino; "negativizá X" / X en la lista de términos = término.
+- **Match type explícito:** "en phrase" / "en exact" / "broad" (ver regla 3). Si no dice → default.
+- **Nivel:** ad group (default) salvo que pida "a nivel campaña".
 - **Modo:** `apply` (default) o `dry-run`.
 
 Acepta también el bloque copy-paste de `daily-negatives` / `negative-targeting`: esos bloques ya
@@ -104,35 +153,39 @@ clasificación exact/phrase por término, honrala.
 
 ### Paso 2b — GUARDRAIL de destino
 
-Si tras el Paso 1 **no hay** campaña/ad group explícito: **detené el flujo** y preguntá algo como:
-> "¿A qué campaña(s) o ad group(s) querés que aplique estos N negativos? No los aplico a toda la
-> cuenta por seguridad."
+Si tras el Paso 1 **no hay ni lista ni regla** de destino: **detené el flujo** y preguntá algo como:
+> "¿A qué campaña(s) o ad group(s) aplico estos N negativos? Puedo tomar una lista de nombres, un
+> patrón (ej. 'todas menos SCAVENGER') o las que anuncian un ASIN. No aplico a toda la cuenta sin
+> que me lo digas."
 
-No sigas hasta tener el destino. No infieras "todas".
+No sigas hasta tener el destino. No infieras "todas" cuando no hay ninguna regla.
 
 ### Paso 3 — Resolver los ad groups destino (construir la reference)
 
-Los negativos a nivel ad group necesitan `ad_group_id` en la reference. Traé los ad groups
-del destino y filtrá a los habilitados:
+Los negativos a nivel ad group necesitan `ad_group_id` en la reference. Armá la fetch de `ad_group`
+según el/los targeting mode(s) del Paso 1 (ver "Targeting modes" arriba para los filtros exactos),
+**siempre** con `CAMPAIGN_STATE=ENABLED`, `AD_GROUP_STATE=ENABLED` y un `DATE` (últimos 14 días):
 
 ```
 get_entity_data(
   entity_type="ad_group",
   team_id=..., profile_id=..., chat_session_id=...,
-  filters: { CAMPAIGN_NAME (o CAMPAIGN_ID) = <destino>, campaign_state='Enabled', ad_group_state='Enabled', DATE=<últimos 14 días> }
+  filters: [ <filtros del targeting mode: CAMPAIGN_NAME / CAMPAIGN_NAME_NOT / CONTAINS_ASINS / CAMPAIGN_ID…>,
+             CAMPAIGN_STATE=ENABLED, AD_GROUP_STATE=ENABLED, DATE=<últimos 14 días> ]
 )
 ```
 
-- Esto devuelve una reference `mcp://data/...` con las filas de ad group (cada una con su `ad_group_id`).
-- **Nunca construyas la URI a mano** — siempre viene de `get_entity_data`.
-- Si el destino es una campaña con varios ad groups, los negativos se van a aplicar a **todos**
-  los ad groups habilitados de esa campaña. Eso es esperable, pero **decílo en el resumen**
-  (nombre y cantidad de ad groups) para que no sea una sorpresa. Si Nacho quiere solo algunos
-  ad groups, filtrá por `AD_GROUP_NAME`/`AD_GROUP_ID`.
-- Si el `read` de la reference vuelve con 0 filas, avisá que no encontraste ad groups habilitados
-  para ese destino y confirmá el nombre — no sigas con una reference vacía.
-
-> Tip: si querés ver qué ad groups resolviste, `read(reference=...)` (hasta 100 filas) antes de crear el preview.
+- Devuelve una reference `mcp://data/...` con las filas de ad group (cada una con su `ad_group_id`).
+  **Nunca construyas la URI a mano** — siempre viene de `get_entity_data`.
+- Filtros de nombre son **case-sensitive** en el valor pero se usan como constantes UPPERCASE en la
+  key del schema (ej. `CAMPAIGN_NAME_NOT`); el matching de `LIKE`/`NOT_LIKE` es por substring.
+- Si el destino es una campaña (o varias) con múltiples ad groups, los negativos van a **todos** sus
+  ad groups habilitados. Es esperable, pero **decílo en el resumen** (cantidad + nombres). Si Nacho
+  quiere solo algunos, sumá un filtro `AD_GROUP_NAME`/`AD_GROUP_ID`.
+- **Siempre `read(reference=...)`** (hasta 100 filas) para ver qué resolviste antes de crear el
+  preview — sobre todo en modes B/C, donde el set puede ser grande o inesperado. Si vuelve **0
+  filas**: avisá y **par** — no sigas con una reference vacía (patrón/ASIN mal escrito, o nada
+  habilitado). Si son >100 filas, usá `group_by_column` por `campaign_name` para reportar el alcance.
 
 ### Paso 4 — Validar términos (antes de crear el preview)
 
@@ -153,7 +206,8 @@ create_entities(
   team_id=..., profile_id=..., chat_session_id=...,
   reference=<ad_group ref del Paso 3>,
   keywords=[<lista de keywords>],
-  match_types=["AD_GROUP_NEGATIVE_EXACT","AD_GROUP_NEGATIVE_PHRASE"]
+  match_types=<según regla 3: ["AD_GROUP_NEGATIVE_EXACT","AD_GROUP_NEGATIVE_PHRASE"] por default,
+               o ["AD_GROUP_NEGATIVE_PHRASE"] si dijo "phrase", o ["AD_GROUP_NEGATIVE_EXACT"] si dijo "exact">
 )
 ```
 
@@ -231,6 +285,26 @@ Cerrá con una línea accionable, p.ej. "Listo: 72 keyword-negatives + 12 ASIN-n
   el link "View in AdLabs" del preview y no llames al apply (equivale a un dry-run con confirmación manual).
 
 ---
+
+## Ejemplos
+
+**Ejemplo 1 — exclusión por nombre + phrase (bulk):**
+Input: *"Aplicá esta lista de negativos en PHRASE a todos los ad groups de todas las campañas menos
+las que tienen SCAVENGER en el nombre: [lista]"* — cuenta Happy Fox.
+- Mode B (exclusión). Fetch `ad_group` con `CAMPAIGN_NAME_NOT NOT_LIKE "SCAVENGER"` + states ENABLED + DATE.
+- `read` la ref → p.ej. 40 ad groups en 12 campañas (SCAVENGER excluidas).
+- Preview `negative_targeting` con `keywords=[lista]`, `match_types=["AD_GROUP_NEGATIVE_PHRASE"]`.
+- Resumen: "22 términos × PHRASE × 40 ad groups = 880 negativos, 12 campañas (excluidas 3 SCAVENGER)".
+- Auto-apply → recibo (creados vs ya existentes).
+
+**Ejemplo 2 — por ASIN anunciado + exact:**
+Input: *"Aplicá esta lista de negativos en exact a las campañas que tienen como feature product el
+ASIN B08XYZ1234: [lista]"*.
+- Mode C (default: solo ad groups que anuncian el ASIN). Fetch `ad_group` con
+  `CONTAINS_ASINS IN ["B08XYZ1234"]` + states ENABLED + DATE.
+- `read` la ref → p.ej. 6 ad groups en 4 campañas.
+- Preview con `keywords=[lista]`, `match_types=["AD_GROUP_NEGATIVE_EXACT"]`.
+- Resumen + auto-apply + recibo.
 
 ## Errores comunes y cómo evitarlos
 
