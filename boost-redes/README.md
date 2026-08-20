@@ -75,6 +75,16 @@ Con estas variables la app deja de usar el modo demo automáticamente.
 El ranking se ordena por `total_amount` desc. Los pagos son **acumulativos**:
 podés seguir boosteando para escalar posiciones.
 
+### 📈 Contador de clics (tráfico real)
+
+Cada link del ranking pasa por un redirect propio `GET /api/go/:id` que **suma
+un clic** al perfil y redirige a su URL destino. Así cada perfil ve cuánto
+tráfico real le trajo su boost — el gran diferencial de estilo outbid.lol. Los
+clics se muestran en cada fila (`👆 N clics`).
+
+> Para el MVP se cuenta 1 clic por hit. Más adelante se puede agregar dedup por
+> IP/sesión y filtrado de bots.
+
 ---
 
 ## 🚀 Deploy
@@ -97,6 +107,7 @@ src/
     api/checkout/route.ts # inicia el pago
     api/webhook/route.ts  # confirma el pago (MercadoPago)
     api/entries/route.ts  # lista el ranking
+    api/go/[id]/route.ts  # redirect con conteo de clics
     api/demo-pay/route.ts # simulación de pago (solo demo)
     success | pending | failure
   components/Ranking.tsx   # UI del ranking + modal de boost

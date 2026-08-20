@@ -43,11 +43,11 @@ function uid() {
 
 function seedDemo(store: MemStore) {
   const demo: Omit<Entry, "id" | "created_at">[] = [
-    { handle: "@lucia.crea", platform: "instagram", url: "https://instagram.com/lucia.crea", message: "Diseño y hago reels que rompen 🔥", avatar_url: null, total_amount: 12500, boosts: 9 },
-    { handle: "@martin.gg", platform: "twitch", url: "https://twitch.tv/martin_gg", message: "Streamer de Valorant, seguime que subo clips", avatar_url: null, total_amount: 8300, boosts: 6 },
-    { handle: "@sofi.beats", platform: "spotify", url: "https://open.spotify.com/artist/demo", message: "Nuevo single afuera, dale play 🎧", avatar_url: null, total_amount: 6100, boosts: 4 },
-    { handle: "@eltoto", platform: "tiktok", url: "https://tiktok.com/@eltoto", message: "Humor argento diario", avatar_url: null, total_amount: 3400, boosts: 3 },
-    { handle: "@dev.nacho", platform: "youtube", url: "https://youtube.com/@devnacho", message: "Tutoriales de código en español", avatar_url: null, total_amount: 1500, boosts: 2 },
+    { handle: "@lucia.crea", platform: "instagram", url: "https://instagram.com/lucia.crea", message: "Diseño y hago reels que rompen 🔥", avatar_url: null, total_amount: 12500, boosts: 9, clicks: 3128 },
+    { handle: "@martin.gg", platform: "twitch", url: "https://twitch.tv/martin_gg", message: "Streamer de Valorant, seguime que subo clips", avatar_url: null, total_amount: 8300, boosts: 6, clicks: 1974 },
+    { handle: "@sofi.beats", platform: "spotify", url: "https://open.spotify.com/artist/demo", message: "Nuevo single afuera, dale play 🎧", avatar_url: null, total_amount: 6100, boosts: 4, clicks: 1245 },
+    { handle: "@eltoto", platform: "tiktok", url: "https://tiktok.com/@eltoto", message: "Humor argento diario", avatar_url: null, total_amount: 3400, boosts: 3, clicks: 862 },
+    { handle: "@dev.nacho", platform: "youtube", url: "https://youtube.com/@devnacho", message: "Tutoriales de código en español", avatar_url: null, total_amount: 1500, boosts: 2, clicks: 391 },
   ];
   const base = Date.now() - demo.length * 1000;
   demo.forEach((d, i) => {
@@ -102,6 +102,7 @@ export async function createEntry(input: {
         avatar_url: input.avatar_url ?? null,
         total_amount: 0,
         boosts: 0,
+        clicks: 0,
       })
       .select("*")
       .single();
@@ -117,6 +118,7 @@ export async function createEntry(input: {
     avatar_url: input.avatar_url ?? null,
     total_amount: 0,
     boosts: 0,
+    clicks: 0,
     created_at: now,
   };
   mem().entries.set(entry.id, entry);
@@ -204,6 +206,28 @@ export async function approvePayment(id: string): Promise<Entry | null> {
     e.boosts += 1;
   }
   return e ?? null;
+}
+
+/**
+ * Suma 1 al contador de clics de un perfil y devuelve su URL destino.
+ * Devuelve null si el perfil no existe.
+ */
+export async function incrementClick(entryId: string): Promise<string | null> {
+  if (usingSupabase) {
+    const { data: entry } = await sb()
+      .from("entries")
+      .select("url")
+      .eq("id", entryId)
+      .maybeSingle();
+    if (!entry) return null;
+    // Incremento atómico vía RPC (ver supabase/schema.sql)
+    await sb().rpc("increment_click", { p_entry_id: entryId });
+    return (entry as { url: string }).url;
+  }
+  const e = mem().entries.get(entryId);
+  if (!e) return null;
+  e.clicks += 1;
+  return e.url;
 }
 
 export async function rejectPayment(id: string): Promise<void> {

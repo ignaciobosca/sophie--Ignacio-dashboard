@@ -10,6 +10,10 @@ function fmt(n: number) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
 }
 
+function nf(n: number) {
+  return new Intl.NumberFormat("es-AR").format(n);
+}
+
 function platformMeta(id: Platform) {
   return PLATFORMS.find((p) => p.id === id) ?? PLATFORMS[PLATFORMS.length - 1];
 }
@@ -94,7 +98,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <a
-                    href={e.url}
+                    href={`/api/go/${e.id}`}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
                     className="truncate font-semibold hover:text-brand-glow"
@@ -106,11 +110,14 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
                   </span>
                 </div>
                 {e.message && <p className="truncate text-sm text-white/50">{e.message}</p>}
+                <div className="mt-0.5 text-[11px] text-white/40">
+                  👆 {nf(e.clicks)} clic{e.clicks === 1 ? "" : "s"} · ⚡ {e.boosts} boost{e.boosts === 1 ? "" : "s"}
+                </div>
               </div>
 
               <div className="shrink-0 text-right">
                 <div className="font-bold text-brand-glow">{fmt(e.total_amount)}</div>
-                <div className="text-[11px] text-white/40">{e.boosts} boost{e.boosts === 1 ? "" : "s"}</div>
+                <div className="text-[11px] text-white/40">boosteado</div>
               </div>
 
               <button

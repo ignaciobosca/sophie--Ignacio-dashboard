@@ -28,6 +28,7 @@ export interface Entry {
   avatar_url: string | null;
   total_amount: number;
   boosts: number;
+  clicks: number;
   created_at: string;
 }
 

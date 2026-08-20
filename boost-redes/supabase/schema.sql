@@ -15,8 +15,12 @@ create table if not exists public.entries (
   avatar_url    text,
   total_amount  numeric not null default 0,
   boosts        integer not null default 0,
+  clicks        integer not null default 0,
   created_at    timestamptz not null default now()
 );
+
+-- Si ya tenías la tabla creada, agregá la columna de clics:
+alter table public.entries add column if not exists clicks integer not null default 0;
 
 create index if not exists entries_rank_idx
   on public.entries (total_amount desc, created_at asc);
@@ -49,6 +53,14 @@ begin
   returning * into updated;
   return updated;
 end;
+$$;
+
+-- Incremento atómico del contador de clics
+create or replace function public.increment_click(p_entry_id uuid)
+returns void
+language sql
+as $$
+  update public.entries set clicks = clicks + 1 where id = p_entry_id;
 $$;
 
 -- ============================================================
