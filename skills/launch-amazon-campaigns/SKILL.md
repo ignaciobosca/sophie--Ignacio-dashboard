@@ -2,19 +2,18 @@
 name: launch-amazon-campaigns
 description: >-
   Launch live Amazon Sponsored Products (SP) campaigns by API through a guided,
-  question-by-question intake. Use this whenever Nacho wants to CREATE, LAUNCH,
+  question-by-question intake. Use whenever Nacho wants to CREATE, LAUNCH,
   ACTIVATE, or SET UP one or more Amazon PPC / Sponsored Products campaigns —
   e.g. "lanzá una campaña", "lanzar campañas en Amazon", "crear una campaña SP",
   "armar una campaña de PPC", "activá esta campaña", "nueva campaña para [ASIN]",
-  "launch a campaign", "create SP campaigns", "set up PPC for [brand]", or a
-  request to push auto/manual keyword/product-targeting campaigns live. The skill
-  asks for everything Amazon needs (store, marketplace, targeting type, ASINs,
-  budget, keywords, bids, placements, negatives, activation date), suggests
-  Sophie-convention names and Helium10-based bids, shows a global summary, and
-  creates everything only after one final OK. It creates entities LIVE via the
-  Amazon Ads API, so it is the right skill anytime the intent is to actually
-  launch/activate — not to generate a bulk upload file (that is sp-bulk-builder)
-  and not to audit or optimize existing campaigns.
+  "launch a campaign", "create SP campaigns", "set up PPC for [brand]", or any
+  request to push auto/manual keyword/product-targeting campaigns live. Asks for
+  everything Amazon needs (store, marketplace, targeting type, ASINs, budget,
+  keywords, bids, placements, negatives, activation date), suggests
+  Sophie-convention names and Helium10-based bids, shows a summary, and creates
+  only after one final OK. Creates entities LIVE via the Amazon Ads API — the
+  right skill to actually launch/activate, NOT to generate a bulk upload file
+  (that is sp-bulk-builder) or audit/optimize existing campaigns.
 ---
 
 # Launch Amazon Campaigns (Sponsored Products, live via API)
