@@ -120,6 +120,58 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
     );
   };
 
+  const renderChampion = (e: Entry) => {
+    const meta = platformMeta(e.platform);
+    return (
+      <div className="animate-rise relative mb-3 overflow-hidden rounded-3xl border border-gold/40 bg-gradient-to-b from-gold/10 to-transparent p-4 shadow-[0_0_55px_-12px_rgba(245,197,66,0.55)] sm:p-5">
+        <div className="mb-3">
+          <span className="rounded-full bg-gold px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-black">
+            👑 #1 · Campeón
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gold/15 text-3xl ring-2 ring-gold/60">
+            {meta.emoji}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <a
+              href={`/api/go/${e.id}`}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="block truncate text-2xl font-black leading-tight tracking-tight hover:text-gold sm:text-3xl"
+            >
+              {e.handle}
+            </a>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/55">
+              <span className="rounded-full bg-gold/20 px-2 py-0.5 font-semibold text-gold">
+                {meta.emoji} {meta.label}
+              </span>
+              <span>👆 {nf(e.clicks)} clic{e.clicks === 1 ? "" : "s"}</span>
+              <span className="text-white/25">·</span>
+              <span>⚡ {e.boosts} boost{e.boosts === 1 ? "" : "s"}</span>
+            </div>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <div className="text-xl font-black text-gold sm:text-2xl">{fmt(e.total_amount)}</div>
+            <div className="text-[10px] uppercase tracking-wide text-white/40">boosteado</div>
+          </div>
+        </div>
+
+        {e.message && <p className="mt-3 truncate text-sm text-white/60">{e.message}</p>}
+
+        <button
+          onClick={() => openBoost(e)}
+          className="mt-4 w-full rounded-xl bg-gold py-3 text-sm font-extrabold text-black transition hover:brightness-105 active:translate-y-px"
+        >
+          ⚡ Boostear al #1
+        </button>
+      </div>
+    );
+  };
+
   return (
     <section id="ranking" className="mx-auto w-full max-w-3xl px-4 pb-28">
       <div className="mb-5 flex items-center justify-between">
@@ -142,8 +194,15 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
         </div>
       )}
 
-      {/* TOP 3 — arriba de todo */}
-      {top3.length > 0 && <ul className="space-y-3">{top3.map((e, i) => renderRow(e, i + 1))}</ul>}
+      {/* TOP 3 — arriba de todo: el #1 destacado como campeón */}
+      {top3.length > 0 && (
+        <div>
+          {renderChampion(top3[0])}
+          {top3.length > 1 && (
+            <ul className="space-y-3">{top3.slice(1).map((e, i) => renderRow(e, i + 2))}</ul>
+          )}
+        </div>
+      )}
 
       {/* Cómo funciona — en el medio */}
       <div className="my-10">
