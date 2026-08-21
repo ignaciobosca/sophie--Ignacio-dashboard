@@ -49,6 +49,11 @@ export default async function Home() {
       <Ranking initialEntries={entries} />
 
       <footer className="border-t border-white/5 px-4 py-8 text-center text-xs text-white/30">
+        <div className="mb-2 flex items-center justify-center gap-4">
+          <a href="/stats" className="hover:text-white/70">Estadísticas</a>
+          <a href="/terminos" className="hover:text-white/70">Términos</a>
+          <a href="/privacidad" className="hover:text-white/70">Privacidad</a>
+        </div>
         Boost tus Redes · Hecho con Next.js + MercadoPago · Subí de forma responsable.
       </footer>
     </main>

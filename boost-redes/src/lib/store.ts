@@ -31,12 +31,13 @@ type MemStore = {
   payments: Map<string, Payment>;
   clickLog: Map<string, number>; // dedupKey -> último clic contado (ms)
   visits: Map<string, number>; // session -> last_seen (ms)
+  rateHits: { key: string; t: number }[];
 };
 
 const g = globalThis as unknown as { __boostStore?: MemStore };
 function mem(): MemStore {
   if (!g.__boostStore) {
-    g.__boostStore = { entries: new Map(), payments: new Map(), clickLog: new Map(), visits: new Map() };
+    g.__boostStore = { entries: new Map(), payments: new Map(), clickLog: new Map(), visits: new Map(), rateHits: [] };
     seedDemo(g.__boostStore);
   }
   return g.__boostStore;
@@ -71,13 +72,14 @@ export async function listEntries(): Promise<Entry[]> {
       .from("entries")
       .select("*")
       .gt("total_amount", 0) // solo perfiles pagados
+      .eq("hidden", false) // no mostrar perfiles ocultos/reportados
       .order("total_amount", { ascending: false })
       .order("created_at", { ascending: true });
     if (error) throw error;
     return (data ?? []) as Entry[];
   }
   return Array.from(mem().entries.values())
-    .filter((e) => e.total_amount > 0)
+    .filter((e) => e.total_amount > 0 && !e.hidden)
     .sort((a, b) => b.total_amount - a.total_amount || a.created_at.localeCompare(b.created_at));
 }
 
@@ -125,6 +127,8 @@ export async function createEntry(input: {
     total_amount: 0,
     boosts: 0,
     clicks: 0,
+    hidden: false,
+    reports: 0,
     created_at: now,
   };
   mem().entries.set(entry.id, entry);
@@ -166,6 +170,7 @@ export async function createPayment(input: {
   amount: number;
   currency?: string;
   provider_ref?: string | null;
+  photo?: string | null;
 }): Promise<Payment> {
   const now = new Date().toISOString();
   if (usingSupabase) {
@@ -177,6 +182,7 @@ export async function createPayment(input: {
         currency: input.currency ?? "ARS",
         status: "pending",
         provider_ref: input.provider_ref ?? null,
+        photo: input.photo ?? null,
       })
       .select("*")
       .single();
@@ -190,6 +196,7 @@ export async function createPayment(input: {
     currency: input.currency ?? "ARS",
     status: "pending",
     provider_ref: input.provider_ref ?? null,
+    photo: input.photo ?? null,
     created_at: now,
   };
   mem().payments.set(payment.id, payment);
@@ -224,12 +231,17 @@ export async function approvePayment(id: string): Promise<Entry | null> {
     if (pay.status === "approved") return getEntry(pay.entry_id);
     await sb().from("payments").update({ status: "approved" }).eq("id", id);
     // Incremento atómico vía RPC (ver supabase/schema.sql)
-    const { data, error } = await sb().rpc("increment_boost", {
+    const { error } = await sb().rpc("increment_boost", {
       p_entry_id: pay.entry_id,
       p_amount: pay.amount,
     });
     if (error) throw error;
-    return (data as Entry) ?? getEntry(pay.entry_id);
+    // La foto se sube al storage recién ahora (pago acreditado), no antes.
+    if (pay.photo) {
+      await setEntryPhoto(pay.entry_id, pay.photo);
+      await sb().from("payments").update({ photo: null }).eq("id", id);
+    }
+    return getEntry(pay.entry_id);
   }
   const store = mem();
   const p = store.payments.get(id);
@@ -240,6 +252,10 @@ export async function approvePayment(id: string): Promise<Entry | null> {
   if (e) {
     e.total_amount += p.amount;
     e.boosts += 1;
+    if (p.photo) {
+      e.avatar_url = p.photo; // en modo demo guardamos el data URL directo
+      p.photo = null;
+    }
   }
   return e ?? null;
 }
@@ -397,6 +413,53 @@ export async function getPublicStats(): Promise<PublicStats> {
     last24h,
     recent,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiting (anti-spam) y reportes (moderación)
+// ---------------------------------------------------------------------------
+
+/**
+ * Registra un intento y devuelve true si sigue dentro del límite.
+ * (máx `maxCount` intentos por `key` en `windowSeconds`).
+ */
+export async function checkRateLimit(key: string, maxCount: number, windowSeconds: number): Promise<boolean> {
+  const now = Date.now();
+  if (usingSupabase) {
+    const since = new Date(now - windowSeconds * 1000).toISOString();
+    await sb().from("rate_hits").insert({ key });
+    const { count } = await sb()
+      .from("rate_hits")
+      .select("key", { count: "exact", head: true })
+      .eq("key", key)
+      .gte("created_at", since);
+    return (count ?? 0) <= maxCount;
+  }
+  const store = mem();
+  store.rateHits.push({ key, t: now });
+  const cutoff = now - windowSeconds * 1000;
+  store.rateHits = store.rateHits.filter((h) => h.t >= cutoff);
+  return store.rateHits.filter((h) => h.key === key).length <= maxCount;
+}
+
+const REPORTS_TO_HIDE = 3;
+
+/** Suma un reporte a un perfil y lo oculta si supera el umbral. */
+export async function reportEntry(entryId: string): Promise<void> {
+  if (usingSupabase) {
+    const { data } = await sb().from("entries").select("reports").eq("id", entryId).maybeSingle();
+    if (!data) return;
+    const reports = (Number((data as { reports: number }).reports) || 0) + 1;
+    await sb()
+      .from("entries")
+      .update({ reports, hidden: reports >= REPORTS_TO_HIDE })
+      .eq("id", entryId);
+    return;
+  }
+  const e = mem().entries.get(entryId);
+  if (!e) return;
+  e.reports = (e.reports ?? 0) + 1;
+  if (e.reports >= REPORTS_TO_HIDE) e.hidden = true;
 }
 
 export async function rejectPayment(id: string): Promise<void> {
