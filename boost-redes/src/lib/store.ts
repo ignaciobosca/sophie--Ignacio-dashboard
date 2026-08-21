@@ -303,6 +303,70 @@ function computeMemStats(now: number): VisitorStats {
   return { online, lastHour };
 }
 
+export interface PublicStats {
+  profiles: number;
+  boosts: number;
+  raised: number;
+  clicks: number;
+  online: number;
+  lastHour: number;
+  last24h: number;
+  recent: { handle: string; platform: string; amount: number; created_at: string }[];
+}
+
+/** Estadísticas públicas agregadas para la página /stats. */
+export async function getPublicStats(): Promise<PublicStats> {
+  if (usingSupabase) {
+    const { data, error } = await sb().rpc("public_stats");
+    if (error) throw error;
+    const d = (data ?? {}) as Record<string, unknown>;
+    return {
+      profiles: Number(d.profiles) || 0,
+      boosts: Number(d.boosts) || 0,
+      raised: Number(d.raised) || 0,
+      clicks: Number(d.clicks) || 0,
+      online: Number(d.online) || 0,
+      lastHour: Number(d.lastHour) || 0,
+      last24h: Number(d.last24h) || 0,
+      recent: Array.isArray(d.recent) ? (d.recent as PublicStats["recent"]) : [],
+    };
+  }
+  const store = mem();
+  const now = Date.now();
+  const entries = Array.from(store.entries.values());
+  let online = 0;
+  let lastHour = 0;
+  let last24h = 0;
+  for (const t of store.visits.values()) {
+    if (now - t <= ONLINE_MS) online++;
+    if (now - t <= HOUR_MS) lastHour++;
+    if (now - t <= 24 * 60 * 60 * 1000) last24h++;
+  }
+  const recent = Array.from(store.payments.values())
+    .filter((p) => p.status === "approved")
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 8)
+    .map((p) => {
+      const e = store.entries.get(p.entry_id);
+      return {
+        handle: e?.handle ?? "@?",
+        platform: e?.platform ?? "otro",
+        amount: p.amount,
+        created_at: p.created_at,
+      };
+    });
+  return {
+    profiles: entries.length,
+    boosts: entries.reduce((s, e) => s + e.boosts, 0),
+    raised: entries.reduce((s, e) => s + e.total_amount, 0),
+    clicks: entries.reduce((s, e) => s + e.clicks, 0),
+    online,
+    lastHour,
+    last24h,
+    recent,
+  };
+}
+
 export async function rejectPayment(id: string): Promise<void> {
   if (usingSupabase) {
     await sb().from("payments").update({ status: "rejected" }).eq("id", id);
