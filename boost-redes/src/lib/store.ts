@@ -30,12 +30,13 @@ type MemStore = {
   entries: Map<string, Entry>;
   payments: Map<string, Payment>;
   clickLog: Map<string, number>; // dedupKey -> último clic contado (ms)
+  visits: Map<string, number>; // session -> last_seen (ms)
 };
 
 const g = globalThis as unknown as { __boostStore?: MemStore };
 function mem(): MemStore {
   if (!g.__boostStore) {
-    g.__boostStore = { entries: new Map(), payments: new Map(), clickLog: new Map() };
+    g.__boostStore = { entries: new Map(), payments: new Map(), clickLog: new Map(), visits: new Map() };
     seedDemo(g.__boostStore);
   }
   return g.__boostStore;
@@ -248,6 +249,58 @@ function cleanupClickLog(store: MemStore, windowSeconds: number) {
   if (store.clickLog.size <= 5000) return;
   const cutoff = Date.now() - windowSeconds * 1000;
   for (const [k, t] of store.clickLog) if (t < cutoff) store.clickLog.delete(k);
+}
+
+// ---------------------------------------------------------------------------
+// Presencia de visitantes (contador "en línea / última hora")
+// ---------------------------------------------------------------------------
+
+const ONLINE_MS = 5 * 60 * 1000; // "en línea" = visto en los últimos 5 min
+const HOUR_MS = 60 * 60 * 1000;
+
+export interface VisitorStats {
+  online: number;
+  lastHour: number;
+}
+
+/** Registra la presencia de una sesión y devuelve las métricas actualizadas. */
+export async function recordVisit(session: string): Promise<VisitorStats> {
+  const now = Date.now();
+  if (usingSupabase) {
+    await sb()
+      .from("visits")
+      .upsert({ session, last_seen: new Date(now).toISOString() }, { onConflict: "session" });
+    return getVisitorStats();
+  }
+  const m = mem().visits;
+  m.set(session, now);
+  for (const [k, t] of m) if (now - t > HOUR_MS) m.delete(k); // limpieza
+  return computeMemStats(now);
+}
+
+/** Devuelve las métricas sin registrar (para bots o solo lectura). */
+export async function getVisitorStats(): Promise<VisitorStats> {
+  const now = Date.now();
+  if (usingSupabase) {
+    const onlineCut = new Date(now - ONLINE_MS).toISOString();
+    const hourCut = new Date(now - HOUR_MS).toISOString();
+    const [onlineRes, hourRes] = await Promise.all([
+      sb().from("visits").select("session", { count: "exact", head: true }).gte("last_seen", onlineCut),
+      sb().from("visits").select("session", { count: "exact", head: true }).gte("last_seen", hourCut),
+    ]);
+    return { online: onlineRes.count ?? 0, lastHour: hourRes.count ?? 0 };
+  }
+  return computeMemStats(now);
+}
+
+function computeMemStats(now: number): VisitorStats {
+  let online = 0;
+  let lastHour = 0;
+  for (const t of mem().visits.values()) {
+    if (now - t <= ONLINE_MS) online++;
+    if (now - t <= HOUR_MS) lastHour++;
+  }
+  return { online, lastHour };
 }
 
 export async function rejectPayment(id: string): Promise<void> {
