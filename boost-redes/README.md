@@ -82,8 +82,17 @@ un clic** al perfil y redirige a su URL destino. Así cada perfil ve cuánto
 tráfico real le trajo su boost — el gran diferencial de estilo outbid.lol. Los
 clics se muestran en cada fila (`👆 N clics`).
 
-> Para el MVP se cuenta 1 clic por hit. Más adelante se puede agregar dedup por
-> IP/sesión y filtrado de bots.
+**Anti-inflado de clics:**
+
+1. **Filtro de bots** (`src/lib/bot.ts`): no cuenta si el User-Agent parece
+   crawler, preview de link (WhatsApp/Discord/Slack/Twitter), headless o cliente
+   HTTP (curl/wget/requests/axios…), ni cuando falta el User-Agent.
+2. **Dedup por visitante**: un mismo visitante (IP + cookie de sesión) suma como
+   máximo **1 clic por perfil por ventana** (`CLICK_DEDUP_WINDOW_SECONDS`,
+   default 1h). La IP se guarda **hasheada** (SHA-256) por privacidad.
+3. En Supabase la lógica es atómica vía la RPC `register_click` + la tabla
+   `click_log`; en modo demo se hace en memoria. El redirect **siempre**
+   funciona aunque el clic no se cuente.
 
 ---
 

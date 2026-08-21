@@ -55,12 +55,44 @@ begin
 end;
 $$;
 
--- Incremento atómico del contador de clics
-create or replace function public.increment_click(p_entry_id uuid)
-returns void
-language sql
+-- Registro de clics para deduplicación por visitante (IP + sesión, hasheado)
+create table if not exists public.click_log (
+  entry_id   uuid not null references public.entries(id) on delete cascade,
+  dedup_key  text not null,
+  last_seen  timestamptz not null default now(),
+  primary key (entry_id, dedup_key)
+);
+
+create index if not exists click_log_seen_idx on public.click_log (last_seen);
+
+-- Registra un clic solo si el mismo visitante no contó dentro de la ventana.
+-- Devuelve true si se contó, false si se ignoró (dedup).
+create or replace function public.register_click(
+  p_entry_id uuid,
+  p_dedup_key text,
+  p_window_seconds integer
+)
+returns boolean
+language plpgsql
 as $$
+declare
+  existing timestamptz;
+begin
+  select last_seen into existing
+    from public.click_log
+   where entry_id = p_entry_id and dedup_key = p_dedup_key;
+
+  if existing is not null and existing > now() - make_interval(secs => p_window_seconds) then
+    return false; -- clic reciente del mismo visitante → no contamos
+  end if;
+
+  insert into public.click_log (entry_id, dedup_key, last_seen)
+  values (p_entry_id, p_dedup_key, now())
+  on conflict (entry_id, dedup_key) do update set last_seen = now();
+
   update public.entries set clicks = clicks + 1 where id = p_entry_id;
+  return true;
+end;
 $$;
 
 -- ============================================================
@@ -70,10 +102,11 @@ $$;
 -- ============================================================
 alter table public.entries enable row level security;
 alter table public.payments enable row level security;
+alter table public.click_log enable row level security;
 
 drop policy if exists "ranking legible por todos" on public.entries;
 create policy "ranking legible por todos"
   on public.entries for select
   using (true);
 
--- payments: sin políticas públicas -> solo accesible con service role.
+-- payments y click_log: sin políticas públicas -> solo accesible con service role.

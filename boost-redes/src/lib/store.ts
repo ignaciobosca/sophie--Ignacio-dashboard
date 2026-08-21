@@ -26,12 +26,16 @@ function sb(): SupabaseClient {
 // Store en memoria (modo demo)
 // ---------------------------------------------------------------------------
 
-type MemStore = { entries: Map<string, Entry>; payments: Map<string, Payment> };
+type MemStore = {
+  entries: Map<string, Entry>;
+  payments: Map<string, Payment>;
+  clickLog: Map<string, number>; // dedupKey -> último clic contado (ms)
+};
 
 const g = globalThis as unknown as { __boostStore?: MemStore };
 function mem(): MemStore {
   if (!g.__boostStore) {
-    g.__boostStore = { entries: new Map(), payments: new Map() };
+    g.__boostStore = { entries: new Map(), payments: new Map(), clickLog: new Map() };
     seedDemo(g.__boostStore);
   }
   return g.__boostStore;
@@ -209,25 +213,41 @@ export async function approvePayment(id: string): Promise<Entry | null> {
 }
 
 /**
- * Suma 1 al contador de clics de un perfil y devuelve su URL destino.
- * Devuelve null si el perfil no existe.
+ * Registra un clic con deduplicación por visitante.
+ * Solo cuenta si ese `dedupKey` no contó un clic sobre este perfil dentro de
+ * los últimos `windowSeconds`. Devuelve true si se contó, false si se ignoró.
  */
-export async function incrementClick(entryId: string): Promise<string | null> {
+export async function countClick(
+  entryId: string,
+  dedupKey: string,
+  windowSeconds: number
+): Promise<boolean> {
   if (usingSupabase) {
-    const { data: entry } = await sb()
-      .from("entries")
-      .select("url")
-      .eq("id", entryId)
-      .maybeSingle();
-    if (!entry) return null;
-    // Incremento atómico vía RPC (ver supabase/schema.sql)
-    await sb().rpc("increment_click", { p_entry_id: entryId });
-    return (entry as { url: string }).url;
+    const { data, error } = await sb().rpc("register_click", {
+      p_entry_id: entryId,
+      p_dedup_key: dedupKey,
+      p_window_seconds: windowSeconds,
+    });
+    if (error) throw error;
+    return Boolean(data);
   }
-  const e = mem().entries.get(entryId);
-  if (!e) return null;
+  const store = mem();
+  const e = store.entries.get(entryId);
+  if (!e) return false;
+  const key = `${entryId}:${dedupKey}`;
+  const now = Date.now();
+  const last = store.clickLog.get(key);
+  if (last && now - last < windowSeconds * 1000) return false;
+  store.clickLog.set(key, now);
   e.clicks += 1;
-  return e.url;
+  cleanupClickLog(store, windowSeconds);
+  return true;
+}
+
+function cleanupClickLog(store: MemStore, windowSeconds: number) {
+  if (store.clickLog.size <= 5000) return;
+  const cutoff = Date.now() - windowSeconds * 1000;
+  for (const [k, t] of store.clickLog) if (t < cutoff) store.clickLog.delete(k);
 }
 
 export async function rejectPayment(id: string): Promise<void> {
