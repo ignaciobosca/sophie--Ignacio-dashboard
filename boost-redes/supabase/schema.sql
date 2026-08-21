@@ -42,6 +42,8 @@ create index if not exists payments_entry_idx on public.payments (entry_id);
 create or replace function public.increment_boost(p_entry_id uuid, p_amount numeric)
 returns public.entries
 language plpgsql
+security definer
+set search_path = public
 as $$
 declare
   updated public.entries;
@@ -74,6 +76,8 @@ create or replace function public.register_click(
 )
 returns boolean
 language plpgsql
+security definer
+set search_path = public
 as $$
 declare
   existing timestamptz;
@@ -110,3 +114,13 @@ create policy "ranking legible por todos"
   using (true);
 
 -- payments y click_log: sin políticas públicas -> solo accesible con service role.
+
+-- ============================================================
+-- Blindaje de las RPC: solo el servidor (service_role) puede ejecutarlas.
+-- Sin esto, cualquiera con la llave pública podría treparse al #1 sin pagar
+-- (increment_boost) o inflar clics (register_click) vía /rest/v1/rpc/...
+-- ============================================================
+revoke execute on function public.increment_boost(uuid, numeric) from public, anon, authenticated;
+revoke execute on function public.register_click(uuid, text, integer) from public, anon, authenticated;
+grant execute on function public.increment_boost(uuid, numeric) to service_role;
+grant execute on function public.register_click(uuid, text, integer) to service_role;
