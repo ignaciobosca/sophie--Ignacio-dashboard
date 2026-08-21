@@ -27,6 +27,12 @@ function medal(rank: number) {
 
 const QUICK = [500, 1000, 2500, 5000];
 
+const STEPS = [
+  { n: "1", t: "Sumá tu perfil", d: "Elegí tu red y pegá el link." },
+  { n: "2", t: "Pagá tu boost", d: "El monto define tu posición." },
+  { n: "3", t: "Escalá el ranking", d: "Sumá más para pasar a los de arriba." },
+];
+
 export default function Ranking({ initialEntries }: { initialEntries: Entry[] }) {
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [open, setOpen] = useState(false);
@@ -57,11 +63,67 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
   };
 
   const leader = entries[0];
+  const top3 = entries.slice(0, 3);
+  const rest = entries.slice(3);
+
+  const renderRow = (e: Entry, rank: number) => {
+    const m = medal(rank);
+    const meta = platformMeta(e.platform);
+    return (
+      <li key={e.id} className={`card animate-rise rounded-2xl p-3 ring-1 ${m.ring} sm:p-4`}>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${m.badge}`}>
+            {m.label}
+          </div>
+
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/5 text-2xl">
+            {meta.emoji}
+          </div>
+
+          {/* Identidad: el @usuario es el protagonista */}
+          <div className="min-w-0 flex-1">
+            <a
+              href={`/api/go/${e.id}`}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="block truncate text-lg font-extrabold leading-tight tracking-tight hover:text-brand-glow sm:text-xl"
+            >
+              {e.handle}
+            </a>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/45">
+              <span className="rounded-full bg-brand/20 px-2 py-0.5 font-semibold text-brand-glow">
+                {meta.emoji} {meta.label}
+              </span>
+              <span>👆 {nf(e.clicks)} clic{e.clicks === 1 ? "" : "s"}</span>
+              <span className="text-white/25">·</span>
+              <span>⚡ {e.boosts} boost{e.boosts === 1 ? "" : "s"}</span>
+            </div>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <div className="text-base font-bold text-brand-glow sm:text-lg">{fmt(e.total_amount)}</div>
+            <div className="text-[10px] uppercase tracking-wide text-white/35">boosteado</div>
+          </div>
+        </div>
+
+        {/* Segunda línea: frase + botón Boost */}
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="min-w-0 flex-1 truncate text-sm text-white/50">{e.message || " "}</p>
+          <button
+            onClick={() => openBoost(e)}
+            className="btn-brand shrink-0 rounded-full px-5 py-2 text-sm font-semibold text-white"
+          >
+            ⚡ Boost
+          </button>
+        </div>
+      </li>
+    );
+  };
 
   return (
     <section id="ranking" className="mx-auto w-full max-w-3xl px-4 pb-28">
       <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-tight">🏆 Ranking en vivo</h2>
+        <h2 className="text-xl font-semibold tracking-tight">🏆 Top boosteados</h2>
         <button
           onClick={openNew}
           className="btn-brand rounded-full px-4 py-2 text-sm font-semibold text-white"
@@ -72,72 +134,44 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
 
       {entries.length === 0 && (
         <div className="card rounded-2xl p-8 text-center text-white/60">
-          Todavía no hay nadie. <button onClick={openNew} className="text-brand-glow underline">Sé el primero</button>.
+          Todavía no hay nadie.{" "}
+          <button onClick={openNew} className="text-brand-glow underline">
+            Sé el primero
+          </button>
+          .
         </div>
       )}
 
-      <ul className="space-y-3">
-        {entries.map((e, i) => {
-          const rank = i + 1;
-          const m = medal(rank);
-          const meta = platformMeta(e.platform);
-          return (
-            <li
-              key={e.id}
-              className={`card animate-rise rounded-2xl p-3 ring-1 ${m.ring} sm:p-4`}
-              style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}
-            >
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${m.badge}`}>
-                  {m.label}
-                </div>
+      {/* TOP 3 — arriba de todo */}
+      {top3.length > 0 && <ul className="space-y-3">{top3.map((e, i) => renderRow(e, i + 1))}</ul>}
 
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/5 text-2xl">
-                  {meta.emoji}
-                </div>
-
-                {/* Identidad: el @usuario es el protagonista */}
-                <div className="min-w-0 flex-1">
-                  <a
-                    href={`/api/go/${e.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                    className="block truncate text-lg font-extrabold leading-tight tracking-tight hover:text-brand-glow sm:text-xl"
-                  >
-                    {e.handle}
-                  </a>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/45">
-                    <span className="rounded-full bg-brand/20 px-2 py-0.5 font-semibold text-brand-glow">
-                      {meta.emoji} {meta.label}
-                    </span>
-                    <span>👆 {nf(e.clicks)} clic{e.clicks === 1 ? "" : "s"}</span>
-                    <span className="text-white/25">·</span>
-                    <span>⚡ {e.boosts} boost{e.boosts === 1 ? "" : "s"}</span>
-                  </div>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <div className="text-base font-bold text-brand-glow sm:text-lg">{fmt(e.total_amount)}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-white/35">boosteado</div>
-                </div>
+      {/* Cómo funciona — en el medio */}
+      <div className="my-10">
+        <h3 className="mb-3 text-center text-xs font-semibold uppercase tracking-wide text-white/40">
+          Cómo funciona
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {STEPS.map((s) => (
+            <div key={s.n} className="card rounded-2xl p-4">
+              <div className="mb-2 grid h-8 w-8 place-items-center rounded-full bg-brand/20 text-sm font-bold text-brand-glow">
+                {s.n}
               </div>
+              <div className="font-semibold">{s.t}</div>
+              <div className="text-sm text-white/50">{s.d}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-              {/* Segunda línea: frase + botón Boost */}
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <p className="min-w-0 flex-1 truncate text-sm text-white/50">
-                  {e.message || " "}
-                </p>
-                <button
-                  onClick={() => openBoost(e)}
-                  className="btn-brand shrink-0 rounded-full px-5 py-2 text-sm font-semibold text-white"
-                >
-                  ⚡ Boost
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Del 4° en adelante — abajo */}
+      {rest.length > 0 && (
+        <>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/40">
+            Del 4° en adelante
+          </h3>
+          <ul className="space-y-3">{rest.map((e, i) => renderRow(e, i + 4))}</ul>
+        </>
+      )}
 
       <p className="mt-8 text-center text-xs text-white/30">
         El ranking se ordena por el total boosteado. Podés seguir sumando para escalar posiciones.

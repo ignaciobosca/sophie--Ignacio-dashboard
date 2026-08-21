@@ -42,23 +42,6 @@ export default async function Home() {
         </div>
       </header>
 
-      {/* Cómo funciona */}
-      <section className="mx-auto mb-12 grid max-w-3xl gap-3 px-4 sm:grid-cols-3">
-        {[
-          { n: "1", t: "Sumá tu perfil", d: "Elegí tu red y pegá el link." },
-          { n: "2", t: "Pagá tu boost", d: "El monto define tu posición." },
-          { n: "3", t: "Escalá el ranking", d: "Sumá más para pasar a los de arriba." },
-        ].map((s) => (
-          <div key={s.n} className="card rounded-2xl p-4">
-            <div className="mb-2 grid h-8 w-8 place-items-center rounded-full bg-brand/20 text-sm font-bold text-brand-glow">
-              {s.n}
-            </div>
-            <div className="font-semibold">{s.t}</div>
-            <div className="text-sm text-white/50">{s.d}</div>
-          </div>
-        ))}
-      </section>
-
       <Ranking initialEntries={entries} />
 
       <footer className="border-t border-white/5 px-4 py-8 text-center text-xs text-white/30">
