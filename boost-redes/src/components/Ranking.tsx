@@ -8,6 +8,13 @@ import PlatformSelect from "./PlatformSelect";
 import Avatar from "./Avatar";
 
 const MIN = Number(process.env.NEXT_PUBLIC_MIN_BOOST_ARS || 500);
+const STEP = Number(process.env.NEXT_PUBLIC_BOOST_STEP_ARS || 500);
+
+// Redondea al múltiplo de STEP más cercano (mínimo MIN).
+function snapAmount(v: number): number {
+  const n = Math.round((Number(v) || 0) / STEP) * STEP;
+  return Math.max(MIN, n);
+}
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
@@ -336,19 +343,24 @@ function BoostModal({
     }
   }
 
-  const toBeatLeader = useMemo(() => Math.max(MIN, leaderAmount + 100 - (target?.total_amount ?? 0)), [leaderAmount, target]);
+  const toBeatLeader = useMemo(
+    () => Math.max(MIN, Math.ceil((leaderAmount + 1 - (target?.total_amount ?? 0)) / STEP) * STEP),
+    [leaderAmount, target]
+  );
 
   async function submit() {
     setError(null);
-    if (amount < MIN) {
+    const amt = snapAmount(amount); // asegura múltiplo de $500
+    setAmount(amt);
+    if (amt < MIN) {
       setError(`El monto mínimo es ${fmt(MIN)}`);
       return;
     }
     setLoading(true);
     try {
       const payload = target
-        ? { entryId: target.id, amount }
-        : { handle, platform, url, message, amount, photo };
+        ? { entryId: target.id, amount: amt }
+        : { handle, platform, url, message, amount: amt, photo };
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -472,10 +484,13 @@ function BoostModal({
           <input
             type="number"
             min={MIN}
+            step={STEP}
             value={amount}
             onChange={(e) => setAmount(Math.floor(Number(e.target.value)))}
+            onBlur={() => setAmount(snapAmount(amount))}
             className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-brand"
           />
+          <p className="mt-1 text-[11px] text-white/35">Se boostea de a ${STEP.toLocaleString("es-AR")}.</p>
           {target && leaderAmount > 0 && (
             <button
               onClick={() => setAmount(toBeatLeader)}

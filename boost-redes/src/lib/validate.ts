@@ -2,6 +2,7 @@ import type { Platform } from "./types";
 import { PLATFORMS } from "./types";
 
 const MIN = Number(process.env.NEXT_PUBLIC_MIN_BOOST_ARS || 500);
+const STEP = Number(process.env.NEXT_PUBLIC_BOOST_STEP_ARS || 500);
 const MAX = 5_000_000;
 
 export interface CheckoutInput {
@@ -49,6 +50,9 @@ export function parseCheckoutInput(body: any): { ok: true; value: CheckoutInput 
     return { ok: false, error: `El monto mínimo es $${MIN}` };
   }
   if (amount > MAX) return { ok: false, error: "Monto demasiado alto" };
+  if (amount % STEP !== 0) {
+    return { ok: false, error: `El boost es de a $${STEP} (ej: ${STEP}, ${STEP * 2}, ${STEP * 3}…)` };
+  }
 
   // Si viene entryId, es un boost sobre un perfil existente.
   if (body.entryId && typeof body.entryId === "string") {
