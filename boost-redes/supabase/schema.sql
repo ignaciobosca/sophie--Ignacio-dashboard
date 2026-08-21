@@ -151,7 +151,7 @@ security definer
 set search_path = public
 as $$
   select json_build_object(
-    'profiles', (select count(*) from entries),
+    'profiles', (select count(*) from entries where total_amount > 0),
     'boosts',   (select coalesce(sum(boosts), 0) from entries),
     'raised',   (select coalesce(sum(total_amount), 0) from entries),
     'clicks',   (select coalesce(sum(clicks), 0) from entries),
@@ -159,7 +159,7 @@ as $$
     'lastHour', (select count(*) from visits where last_seen > now() - interval '60 minutes'),
     'last24h',  (select count(*) from visits where last_seen > now() - interval '24 hours'),
     'recent',   (select coalesce(json_agg(r), '[]'::json) from (
-        select e.handle, e.platform, p.amount, p.created_at
+        select e.handle, e.platform, e.avatar_url, p.amount, p.created_at
         from payments p
         join entries e on e.id = p.entry_id
         where p.status = 'approved'
@@ -171,3 +171,15 @@ $$;
 
 revoke execute on function public.public_stats() from public, anon, authenticated;
 grant execute on function public.public_stats() to service_role;
+
+-- ============================================================
+-- Storage: bucket público para fotos de perfil (avatars)
+-- Subida solo desde el servidor (service_role); lectura pública por URL.
+-- Límite 512 KB por archivo.
+-- ============================================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 524288, array['image/jpeg', 'image/webp', 'image/png'])
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 524288,
+      allowed_mime_types = array['image/jpeg', 'image/webp', 'image/png'];

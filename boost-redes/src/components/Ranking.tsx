@@ -36,6 +36,32 @@ const STEPS = [
   { n: "3", t: "Escalá el ranking", d: "Sumá más para pasar a los de arriba." },
 ];
 
+// Achica y comprime la imagen en el navegador antes de subirla (avatar liviano).
+async function compressImage(file: File, max = 400, quality = 0.82): Promise<string> {
+  const dataUrl: string = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+  const img: HTMLImageElement = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = dataUrl;
+  });
+  const scale = Math.min(1, max / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 export default function Ranking({ initialEntries }: { initialEntries: Entry[] }) {
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [open, setOpen] = useState(false);
@@ -79,7 +105,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
             {m.label}
           </div>
 
-          <Avatar platform={e.platform} handle={e.handle} className="h-12 w-12 bg-white/5" iconClassName="h-6 w-6" />
+          <Avatar platform={e.platform} handle={e.handle} src={e.avatar_url} className="h-12 w-12 bg-white/5" iconClassName="h-6 w-6" />
 
           {/* Identidad: el @usuario es el protagonista */}
           <div className="min-w-0 flex-1">
@@ -135,6 +161,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
           <Avatar
             platform={e.platform}
             handle={e.handle}
+            src={e.avatar_url}
             className="h-16 w-16 bg-gold/15 ring-2 ring-gold/60"
             iconClassName="h-8 w-8"
           />
@@ -265,8 +292,19 @@ function BoostModal({
   const [platform, setPlatform] = useState<Platform>("instagram");
   const [url, setUrl] = useState("");
   const [message, setMessage] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function onPickPhoto(ev: React.ChangeEvent<HTMLInputElement>) {
+    const file = ev.target.files?.[0];
+    if (!file) return;
+    try {
+      setPhoto(await compressImage(file));
+    } catch {
+      setError("No se pudo procesar la imagen");
+    }
+  }
 
   const toBeatLeader = useMemo(() => Math.max(MIN, leaderAmount + 100 - (target?.total_amount ?? 0)), [leaderAmount, target]);
 
@@ -280,7 +318,7 @@ function BoostModal({
     try {
       const payload = target
         ? { entryId: target.id, amount }
-        : { handle, platform, url, message, amount };
+        : { handle, platform, url, message, amount, photo };
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -352,6 +390,34 @@ function BoostModal({
                 placeholder="Contá en una línea por qué te sigan"
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-brand"
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/50">
+                Foto de perfil <span className="text-white/30">(opcional)</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full border border-white/10 bg-white/5">
+                  {photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={photo} alt="preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-lg text-white/40">📷</span>
+                  )}
+                </div>
+                <label className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 hover:border-white/25">
+                  {photo ? "Cambiar" : "Subir foto"}
+                  <input type="file" accept="image/*" className="hidden" onChange={onPickPhoto} />
+                </label>
+                {photo && (
+                  <button
+                    type="button"
+                    onClick={() => setPhoto(null)}
+                    className="text-xs text-white/40 hover:text-white"
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
