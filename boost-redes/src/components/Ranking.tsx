@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Entry, Platform } from "@/lib/types";
 import { PLATFORMS } from "@/lib/types";
+import { PlatformIcon } from "./icons";
+import PlatformSelect from "./PlatformSelect";
 
 const MIN = Number(process.env.NEXT_PUBLIC_MIN_BOOST_ARS || 500);
 
@@ -76,8 +78,8 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
             {m.label}
           </div>
 
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/5 text-2xl">
-            {meta.emoji}
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/5">
+            <PlatformIcon platform={e.platform} brand className="h-6 w-6" />
           </div>
 
           {/* Identidad: el @usuario es el protagonista */}
@@ -91,8 +93,8 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               {e.handle}
             </a>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/45">
-              <span className="rounded-full bg-brand/20 px-2 py-0.5 font-semibold text-brand-glow">
-                {meta.emoji} {meta.label}
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand/20 px-2 py-0.5 font-semibold text-brand-glow">
+                <PlatformIcon platform={e.platform} className="h-3 w-3" /> {meta.label}
               </span>
               <span>👆 {nf(e.clicks)} clic{e.clicks === 1 ? "" : "s"}</span>
               <span className="text-white/25">·</span>
@@ -131,8 +133,8 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
-          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gold/15 text-3xl ring-2 ring-gold/60">
-            {meta.emoji}
+          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gold/15 ring-2 ring-gold/60">
+            <PlatformIcon platform={e.platform} brand className="h-8 w-8" />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -145,8 +147,8 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               {e.handle}
             </a>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/55">
-              <span className="rounded-full bg-gold/20 px-2 py-0.5 font-semibold text-gold">
-                {meta.emoji} {meta.label}
+              <span className="inline-flex items-center gap-1 rounded-full bg-gold/20 px-2 py-0.5 font-semibold text-gold">
+                <PlatformIcon platform={e.platform} className="h-3 w-3" /> {meta.label}
               </span>
               <span>👆 {nf(e.clicks)} clic{e.clicks === 1 ? "" : "s"}</span>
               <span className="text-white/25">·</span>
@@ -325,17 +327,7 @@ function BoostModal({
               </div>
               <div>
                 <label className="mb-1 block text-xs text-white/50">Plataforma</label>
-                <select
-                  value={platform}
-                  onChange={(e) => setPlatform(e.target.value as Platform)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-brand"
-                >
-                  {PLATFORMS.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-panel">
-                      {p.emoji} {p.label}
-                    </option>
-                  ))}
-                </select>
+                <PlatformSelect value={platform} onChange={setPlatform} />
               </div>
             </div>
             <div>
