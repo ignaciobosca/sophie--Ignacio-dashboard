@@ -470,24 +470,52 @@ export async function reportEntry(entryId: string): Promise<void> {
   }
 }
 
-/** Manda un aviso a un webhook (Slack/Discord) cuando un perfil junta muchos reportes. */
+/** Avisa al dueño cuando un perfil junta muchos reportes (por email y/o webhook). */
 async function notifyModeration(e: { id: string; handle: string; url: string; reports: number }): Promise<void> {
-  const webhook = process.env.MODERATION_WEBHOOK_URL;
-  if (!webhook) return;
   const msg =
     `🚩 Perfil reportado ${e.reports} veces en Boost tus Redes\n` +
     `${e.handle} — ${e.url}\n` +
     `ID: ${e.id}\n` +
     `Revisalo y decidí si hay que ocultarlo.`;
-  try {
-    // { text } lo usa Slack, { content } lo usa Discord — mandamos ambos.
-    await fetch(webhook, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: msg, content: msg }),
-    });
-  } catch (err) {
-    console.error("notifyModeration", err);
+
+  // 1) Email vía Resend (si está configurado).
+  const resendKey = process.env.RESEND_API_KEY;
+  const to = process.env.MODERATION_EMAIL;
+  const from = process.env.MODERATION_EMAIL_FROM || "Boost tus Redes <onboarding@resend.dev>";
+  if (resendKey && to) {
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          subject: `🚩 ${e.handle} — ${e.reports} reportes en Boost tus Redes`,
+          html:
+            `<h2>Perfil reportado ${e.reports} veces</h2>` +
+            `<p><strong>${e.handle}</strong><br/>` +
+            `<a href="${e.url}">${e.url}</a></p>` +
+            `<p>ID: <code>${e.id}</code></p>` +
+            `<p>Revisalo y decidí si hay que ocultarlo.</p>`,
+        }),
+      });
+    } catch (err) {
+      console.error("notifyModeration email", err);
+    }
+  }
+
+  // 2) Webhook Slack/Discord (opcional, si está configurado).
+  const webhook = process.env.MODERATION_WEBHOOK_URL;
+  if (webhook) {
+    try {
+      await fetch(webhook, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: msg, content: msg }),
+      });
+    } catch (err) {
+      console.error("notifyModeration webhook", err);
+    }
   }
 }
 
