@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { PublicStats } from "@/lib/store";
 import type { Platform } from "@/lib/types";
-import { PlatformIcon } from "./icons";
+import Avatar from "./Avatar";
 
 function money(n: number) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
@@ -91,7 +91,12 @@ export default function StatsView({ initial }: { initial: PublicStats }) {
         <ul className="space-y-2">
           {s.recent.map((r, i) => (
             <li key={i} className="card flex items-center gap-3 rounded-2xl p-3">
-              <PlatformIcon platform={r.platform as Platform} brand className="h-5 w-5 shrink-0" />
+              <Avatar
+                platform={r.platform as Platform}
+                handle={r.handle}
+                className="h-9 w-9 bg-white/5"
+                iconClassName="h-4 w-4"
+              />
               <span className="min-w-0 flex-1 truncate">
                 <span className="font-semibold">{r.handle}</span>
                 <span className="text-white/50"> recibió un boost</span>
