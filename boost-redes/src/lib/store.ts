@@ -70,14 +70,15 @@ export async function listEntries(): Promise<Entry[]> {
     const { data, error } = await sb()
       .from("entries")
       .select("*")
+      .gt("total_amount", 0) // solo perfiles pagados
       .order("total_amount", { ascending: false })
       .order("created_at", { ascending: true });
     if (error) throw error;
     return (data ?? []) as Entry[];
   }
-  return Array.from(mem().entries.values()).sort(
-    (a, b) => b.total_amount - a.total_amount || a.created_at.localeCompare(b.created_at)
-  );
+  return Array.from(mem().entries.values())
+    .filter((e) => e.total_amount > 0)
+    .sort((a, b) => b.total_amount - a.total_amount || a.created_at.localeCompare(b.created_at));
 }
 
 export async function getEntry(id: string): Promise<Entry | null> {
@@ -128,6 +129,36 @@ export async function createEntry(input: {
   };
   mem().entries.set(entry.id, entry);
   return entry;
+}
+
+/**
+ * Guarda la foto de perfil (data URL base64) de un entry.
+ * En Supabase la sube al bucket `avatars` y guarda la URL pública.
+ * En modo demo guarda el data URL directamente.
+ */
+export async function setEntryPhoto(entryId: string, dataUrl: string): Promise<void> {
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(dataUrl);
+  if (!m) return;
+  if (usingSupabase) {
+    const contentType = m[1];
+    const ext = contentType.split("/")[1] === "jpeg" ? "jpg" : contentType.split("/")[1];
+    const buffer = Buffer.from(m[2], "base64");
+    if (buffer.length > 524288) return; // límite 512 KB
+    const path = `${entryId}.${ext}`;
+    const { error } = await sb().storage.from("avatars").upload(path, buffer, {
+      contentType,
+      upsert: true,
+    });
+    if (error) {
+      console.error("upload avatar", error);
+      return;
+    }
+    const { data } = sb().storage.from("avatars").getPublicUrl(path);
+    await sb().from("entries").update({ avatar_url: data.publicUrl }).eq("id", entryId);
+    return;
+  }
+  const e = mem().entries.get(entryId);
+  if (e) e.avatar_url = dataUrl;
 }
 
 export async function createPayment(input: {
@@ -311,7 +342,7 @@ export interface PublicStats {
   online: number;
   lastHour: number;
   last24h: number;
-  recent: { handle: string; platform: string; amount: number; created_at: string }[];
+  recent: { handle: string; platform: string; avatar_url: string | null; amount: number; created_at: string }[];
 }
 
 /** Estadísticas públicas agregadas para la página /stats. */
@@ -351,6 +382,7 @@ export async function getPublicStats(): Promise<PublicStats> {
       return {
         handle: e?.handle ?? "@?",
         platform: e?.platform ?? "otro",
+        avatar_url: e?.avatar_url ?? null,
         amount: p.amount,
         created_at: p.created_at,
       };

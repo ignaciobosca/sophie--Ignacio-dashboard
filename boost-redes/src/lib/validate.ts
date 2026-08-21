@@ -11,6 +11,14 @@ export interface CheckoutInput {
   url: string;
   message: string;
   amount: number;
+  photo?: string;
+}
+
+function validPhoto(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(v)) return undefined;
+  if (v.length > 900_000) return undefined; // ~600 KB en base64
+  return v;
 }
 
 export function parseCheckoutInput(body: any): { ok: true; value: CheckoutInput } | { ok: false; error: string } {
@@ -47,5 +55,5 @@ export function parseCheckoutInput(body: any): { ok: true; value: CheckoutInput 
 
   const message = String(body.message || "").trim().slice(0, 140);
 
-  return { ok: true, value: { handle, platform, url, message, amount } };
+  return { ok: true, value: { handle, platform, url, message, amount, photo: validPhoto(body.photo) } };
 }

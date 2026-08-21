@@ -94,6 +94,7 @@ export default function StatsView({ initial }: { initial: PublicStats }) {
               <Avatar
                 platform={r.platform as Platform}
                 handle={r.handle}
+                src={r.avatar_url}
                 className="h-9 w-9 bg-white/5"
                 iconClassName="h-4 w-4"
               />

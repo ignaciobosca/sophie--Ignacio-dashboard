@@ -14,35 +14,44 @@ const UNAVATAR: Partial<Record<Platform, string>> = {
 };
 
 /**
- * Foto de perfil de la red del usuario (vía unavatar), con fallback al logo
- * de la plataforma si no se encuentra o falla la carga.
+ * Foto de perfil, con cascada de fuentes:
+ *   1) foto subida por el usuario (src)
+ *   2) foto pública de la red vía unavatar
+ *   3) logo de la plataforma (siempre funciona)
  */
 export default function Avatar({
   platform,
   handle,
+  src,
   className = "h-12 w-12 bg-white/5",
   iconClassName = "h-6 w-6",
 }: {
   platform: Platform;
   handle: string;
+  src?: string | null;
   className?: string;
   iconClassName?: string;
 }) {
-  const provider = UNAVATAR[platform];
   const user = handle.replace(/^@+/, "").trim();
-  const [failed, setFailed] = useState(false);
-  const showImg = Boolean(provider && user) && !failed;
+  const provider = UNAVATAR[platform];
+
+  const sources: string[] = [];
+  if (src) sources.push(src);
+  if (provider && user) sources.push(`https://unavatar.io/${provider}/${encodeURIComponent(user)}?fallback=false`);
+
+  const [idx, setIdx] = useState(0);
+  const current = sources[idx];
 
   return (
     <div className={`grid shrink-0 place-items-center overflow-hidden rounded-full ${className}`}>
-      {showImg ? (
+      {current ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`https://unavatar.io/${provider}/${encodeURIComponent(user)}?fallback=false`}
+          src={current}
           alt={handle}
           referrerPolicy="no-referrer"
           loading="lazy"
-          onError={() => setFailed(true)}
+          onError={() => setIdx((i) => i + 1)}
           className="h-full w-full object-cover"
         />
       ) : (

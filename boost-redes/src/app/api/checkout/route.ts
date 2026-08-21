@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createEntry, createPayment, getEntry, setPaymentProviderRef } from "@/lib/store";
+import { createEntry, createPayment, getEntry, setPaymentProviderRef, setEntryPhoto } from "@/lib/store";
 import { createCheckout } from "@/lib/payments";
 import { parseCheckoutInput } from "@/lib/validate";
 
@@ -37,6 +37,9 @@ export async function POST(req: Request) {
         url: input.url,
         message: input.message,
       });
+      if (input.photo) {
+        await setEntryPhoto(entry.id, input.photo);
+      }
     }
 
     // 2) Crear el pago pendiente.
