@@ -123,7 +123,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
     const meta = platformMeta(e.platform);
     return (
       <li key={e.id} className={`card animate-rise rounded-2xl p-3 ring-1 ${m.ring} sm:p-4`}>
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-start gap-3 sm:gap-4">
           <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${m.badge}`}>
             {m.label}
           </div>
@@ -136,7 +136,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               href={`/api/go/${e.id}`}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="block truncate text-lg font-extrabold leading-tight tracking-tight hover:text-brand-glow sm:text-xl"
+              className="block break-words text-lg font-extrabold leading-tight tracking-tight hover:text-brand-glow sm:text-xl"
             >
               {e.handle}
             </a>
@@ -187,7 +187,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
           </span>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-start gap-3 sm:gap-4">
           <Avatar
             platform={e.platform}
             handle={e.handle}
@@ -201,7 +201,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               href={`/api/go/${e.id}`}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="block truncate text-2xl font-black leading-tight tracking-tight hover:text-gold sm:text-3xl"
+              className="block break-words text-2xl font-black leading-tight tracking-tight hover:text-gold sm:text-3xl"
             >
               {e.handle}
             </a>
