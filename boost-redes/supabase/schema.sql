@@ -124,3 +124,17 @@ revoke execute on function public.increment_boost(uuid, numeric) from public, an
 revoke execute on function public.register_click(uuid, text, integer) from public, anon, authenticated;
 grant execute on function public.increment_boost(uuid, numeric) to service_role;
 grant execute on function public.register_click(uuid, text, integer) to service_role;
+
+-- ============================================================
+-- Presencia de visitantes (contador "en línea / última hora")
+-- Una fila por sesión; se actualiza last_seen en cada ping.
+-- ============================================================
+create table if not exists public.visits (
+  session    text primary key,
+  last_seen  timestamptz not null default now()
+);
+
+create index if not exists visits_seen_idx on public.visits (last_seen);
+
+alter table public.visits enable row level security;
+-- Sin políticas públicas: solo el servidor (service_role) escribe y lee.

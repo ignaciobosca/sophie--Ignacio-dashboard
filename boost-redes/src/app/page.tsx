@@ -1,4 +1,5 @@
 import Ranking from "@/components/Ranking";
+import LiveStats from "@/components/LiveStats";
 import { listEntries, usingSupabase } from "@/lib/store";
 import { usingMercadoPago } from "@/lib/payments";
 
@@ -19,6 +20,9 @@ export default async function Home() {
 
       {/* Hero */}
       <header className="mx-auto max-w-3xl px-4 pt-14 pb-10 text-center sm:pt-20">
+        <div>
+          <LiveStats />
+        </div>
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/60">
           🔥 El ranking donde subís pagando
         </div>
