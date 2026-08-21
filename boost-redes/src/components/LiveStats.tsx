@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 function nf(n: number) {
   return new Intl.NumberFormat("es-AR").format(n);
@@ -43,6 +44,10 @@ export default function LiveStats() {
       <span className="font-semibold text-green-400">{nf(stats.online)} en línea</span>
       <span className="text-white/30">·</span>
       <span>{nf(stats.lastHour)} en la última hora</span>
+      <span className="text-white/30">·</span>
+      <Link href="/stats" className="font-semibold text-brand-glow hover:underline">
+        ver stats →
+      </Link>
     </div>
   );
 }

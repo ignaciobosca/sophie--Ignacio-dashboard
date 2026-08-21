@@ -138,3 +138,36 @@ create index if not exists visits_seen_idx on public.visits (last_seen);
 
 alter table public.visits enable row level security;
 -- Sin políticas públicas: solo el servidor (service_role) escribe y lee.
+
+-- ============================================================
+-- Estadísticas públicas agregadas (página /stats)
+-- Devuelve un JSON con totales seguros para mostrar en público.
+-- La llama el servidor (service_role); el front la consume vía /api/stats.
+-- ============================================================
+create or replace function public.public_stats()
+returns json
+language sql
+security definer
+set search_path = public
+as $$
+  select json_build_object(
+    'profiles', (select count(*) from entries),
+    'boosts',   (select coalesce(sum(boosts), 0) from entries),
+    'raised',   (select coalesce(sum(total_amount), 0) from entries),
+    'clicks',   (select coalesce(sum(clicks), 0) from entries),
+    'online',   (select count(*) from visits where last_seen > now() - interval '5 minutes'),
+    'lastHour', (select count(*) from visits where last_seen > now() - interval '60 minutes'),
+    'last24h',  (select count(*) from visits where last_seen > now() - interval '24 hours'),
+    'recent',   (select coalesce(json_agg(r), '[]'::json) from (
+        select e.handle, e.platform, p.amount, p.created_at
+        from payments p
+        join entries e on e.id = p.entry_id
+        where p.status = 'approved'
+        order by p.created_at desc
+        limit 8
+      ) r)
+  );
+$$;
+
+revoke execute on function public.public_stats() from public, anon, authenticated;
+grant execute on function public.public_stats() to service_role;
