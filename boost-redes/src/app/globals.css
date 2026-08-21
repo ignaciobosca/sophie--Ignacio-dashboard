@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: radial-gradient(1200px 600px at 50% -10%, #1b1440 0%, #0a0a0f 55%) fixed;
+  color: #ececf1;
+  min-height: 100%;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.btn-brand {
+  background: linear-gradient(180deg, #8b6bff, #6b3bff);
+  box-shadow: 0 8px 24px -8px rgba(124, 92, 255, 0.7);
+}
+.btn-brand:hover {
+  filter: brightness(1.08);
+}
+.btn-brand:active {
+  transform: translateY(1px);
+}
+
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
