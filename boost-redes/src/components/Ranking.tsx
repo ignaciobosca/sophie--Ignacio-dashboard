@@ -5,6 +5,7 @@ import type { Entry, Platform } from "@/lib/types";
 import { PLATFORMS } from "@/lib/types";
 import { PlatformIcon } from "./icons";
 import PlatformSelect from "./PlatformSelect";
+import Avatar from "./Avatar";
 
 const MIN = Number(process.env.NEXT_PUBLIC_MIN_BOOST_ARS || 500);
 
@@ -78,9 +79,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
             {m.label}
           </div>
 
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/5">
-            <PlatformIcon platform={e.platform} brand className="h-6 w-6" />
-          </div>
+          <Avatar platform={e.platform} handle={e.handle} className="h-12 w-12 bg-white/5" iconClassName="h-6 w-6" />
 
           {/* Identidad: el @usuario es el protagonista */}
           <div className="min-w-0 flex-1">
@@ -133,9 +132,12 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
-          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gold/15 ring-2 ring-gold/60">
-            <PlatformIcon platform={e.platform} brand className="h-8 w-8" />
-          </div>
+          <Avatar
+            platform={e.platform}
+            handle={e.handle}
+            className="h-16 w-16 bg-gold/15 ring-2 ring-gold/60"
+            iconClassName="h-8 w-8"
+          />
 
           <div className="min-w-0 flex-1">
             <a
