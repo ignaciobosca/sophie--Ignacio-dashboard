@@ -5,7 +5,14 @@ const ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
 export const usingMercadoPago = Boolean(ACCESS_TOKEN);
 
 export function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  // 1) Si la definís a mano, mandamos esa (ideal en producción con MercadoPago).
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  // 2) En Vercel, usamos su dominio automáticamente (no hay que configurar nada).
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL)
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  // 3) Desarrollo local.
+  return "http://localhost:3000";
 }
 
 /**
