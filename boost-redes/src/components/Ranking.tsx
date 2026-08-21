@@ -136,7 +136,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               href={`/api/go/${e.id}`}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="block break-words text-lg font-extrabold leading-tight tracking-tight hover:text-brand-glow sm:text-xl"
+              className="block truncate text-lg font-extrabold leading-tight tracking-tight hover:text-brand-glow sm:text-xl"
             >
               {e.handle}
             </a>
@@ -187,7 +187,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
           </span>
         </div>
 
-        <div className="flex items-start gap-3 sm:gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Avatar
             platform={e.platform}
             handle={e.handle}
@@ -201,7 +201,7 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               href={`/api/go/${e.id}`}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="block break-words text-2xl font-black leading-tight tracking-tight hover:text-gold sm:text-3xl"
+              className="block truncate text-2xl font-black leading-tight tracking-tight hover:text-gold sm:text-3xl"
             >
               {e.handle}
             </a>
@@ -221,14 +221,15 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               </button>
             </div>
           </div>
-
-          <div className="shrink-0 text-right">
-            <div className="text-xl font-black text-gold sm:text-2xl">{fmt(e.total_amount)}</div>
-            <div className="text-[10px] uppercase tracking-wide text-white/40">boosteado</div>
-          </div>
         </div>
 
-        {e.message && <p className="mt-3 break-words text-sm text-white/60">{e.message}</p>}
+        {/* Monto en su propia línea (el handle ocupa todo el ancho arriba) */}
+        <div className="mt-4 flex items-baseline gap-2">
+          <span className="text-3xl font-black text-gold sm:text-4xl">{fmt(e.total_amount)}</span>
+          <span className="text-[11px] uppercase tracking-wide text-white/40">boosteado</span>
+        </div>
+
+        {e.message && <p className="mt-2 break-words text-sm text-white/60">{e.message}</p>}
 
         <button
           onClick={() => openBoost(e)}
