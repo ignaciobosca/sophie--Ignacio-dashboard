@@ -442,24 +442,53 @@ export async function checkRateLimit(key: string, maxCount: number, windowSecond
   return store.rateHits.filter((h) => h.key === key).length <= maxCount;
 }
 
-const REPORTS_TO_HIDE = 3;
+// A los N reportes NO se oculta solo (para evitar "brigadas"): se avisa al dueño.
+const REPORTS_TO_NOTIFY = 5;
 
-/** Suma un reporte a un perfil y lo oculta si supera el umbral. */
+/** Suma un reporte a un perfil. Al llegar al umbral, notifica al dueño (no oculta). */
 export async function reportEntry(entryId: string): Promise<void> {
   if (usingSupabase) {
-    const { data } = await sb().from("entries").select("reports").eq("id", entryId).maybeSingle();
-    if (!data) return;
-    const reports = (Number((data as { reports: number }).reports) || 0) + 1;
-    await sb()
+    const { data } = await sb()
       .from("entries")
-      .update({ reports, hidden: reports >= REPORTS_TO_HIDE })
-      .eq("id", entryId);
+      .select("handle,url,reports")
+      .eq("id", entryId)
+      .maybeSingle();
+    if (!data) return;
+    const d = data as { handle: string; url: string; reports: number };
+    const reports = (Number(d.reports) || 0) + 1;
+    await sb().from("entries").update({ reports }).eq("id", entryId);
+    if (reports === REPORTS_TO_NOTIFY) {
+      await notifyModeration({ id: entryId, handle: d.handle, url: d.url, reports });
+    }
     return;
   }
   const e = mem().entries.get(entryId);
   if (!e) return;
   e.reports = (e.reports ?? 0) + 1;
-  if (e.reports >= REPORTS_TO_HIDE) e.hidden = true;
+  if (e.reports === REPORTS_TO_NOTIFY) {
+    await notifyModeration({ id: entryId, handle: e.handle, url: e.url, reports: e.reports });
+  }
+}
+
+/** Manda un aviso a un webhook (Slack/Discord) cuando un perfil junta muchos reportes. */
+async function notifyModeration(e: { id: string; handle: string; url: string; reports: number }): Promise<void> {
+  const webhook = process.env.MODERATION_WEBHOOK_URL;
+  if (!webhook) return;
+  const msg =
+    `🚩 Perfil reportado ${e.reports} veces en Boost tus Redes\n` +
+    `${e.handle} — ${e.url}\n` +
+    `ID: ${e.id}\n` +
+    `Revisalo y decidí si hay que ocultarlo.`;
+  try {
+    // { text } lo usa Slack, { content } lo usa Discord — mandamos ambos.
+    await fetch(webhook, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: msg, content: msg }),
+    });
+  } catch (err) {
+    console.error("notifyModeration", err);
+  }
 }
 
 export async function rejectPayment(id: string): Promise<void> {
