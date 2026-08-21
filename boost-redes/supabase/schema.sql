@@ -16,11 +16,15 @@ create table if not exists public.entries (
   total_amount  numeric not null default 0,
   boosts        integer not null default 0,
   clicks        integer not null default 0,
+  hidden        boolean not null default false,
+  reports       integer not null default 0,
   created_at    timestamptz not null default now()
 );
 
--- Si ya tenías la tabla creada, agregá la columna de clics:
-alter table public.entries add column if not exists clicks integer not null default 0;
+-- Si ya tenías la tabla creada, agregá las columnas nuevas:
+alter table public.entries add column if not exists clicks  integer not null default 0;
+alter table public.entries add column if not exists hidden  boolean not null default false;
+alter table public.entries add column if not exists reports integer not null default 0;
 
 create index if not exists entries_rank_idx
   on public.entries (total_amount desc, created_at asc);
@@ -33,10 +37,13 @@ create table if not exists public.payments (
   currency      text not null default 'ARS',
   status        text not null default 'pending', -- pending | approved | rejected
   provider_ref  text,
+  photo         text, -- foto en espera; se sube al storage al acreditarse el pago
   created_at    timestamptz not null default now()
 );
 
 create index if not exists payments_entry_idx on public.payments (entry_id);
+
+alter table public.payments add column if not exists photo text;
 
 -- Incremento atómico del total al aprobar un pago
 create or replace function public.increment_boost(p_entry_id uuid, p_amount numeric)
@@ -140,6 +147,16 @@ alter table public.visits enable row level security;
 -- Sin políticas públicas: solo el servidor (service_role) escribe y lee.
 
 -- ============================================================
+-- Rate limiting por IP (para /api/checkout) — evita spam de perfiles/fotos
+-- ============================================================
+create table if not exists public.rate_hits (
+  key        text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists rate_hits_key_time_idx on public.rate_hits (key, created_at);
+alter table public.rate_hits enable row level security;
+
+-- ============================================================
 -- Estadísticas públicas agregadas (página /stats)
 -- Devuelve un JSON con totales seguros para mostrar en público.
 -- La llama el servidor (service_role); el front la consume vía /api/stats.
@@ -151,10 +168,10 @@ security definer
 set search_path = public
 as $$
   select json_build_object(
-    'profiles', (select count(*) from entries where total_amount > 0),
-    'boosts',   (select coalesce(sum(boosts), 0) from entries),
-    'raised',   (select coalesce(sum(total_amount), 0) from entries),
-    'clicks',   (select coalesce(sum(clicks), 0) from entries),
+    'profiles', (select count(*) from entries where total_amount > 0 and not hidden),
+    'boosts',   (select coalesce(sum(boosts), 0) from entries where not hidden),
+    'raised',   (select coalesce(sum(total_amount), 0) from entries where not hidden),
+    'clicks',   (select coalesce(sum(clicks), 0) from entries where not hidden),
     'online',   (select count(*) from visits where last_seen > now() - interval '5 minutes'),
     'lastHour', (select count(*) from visits where last_seen > now() - interval '60 minutes'),
     'last24h',  (select count(*) from visits where last_seen > now() - interval '24 hours'),
@@ -162,7 +179,7 @@ as $$
         select e.handle, e.platform, e.avatar_url, p.amount, p.created_at
         from payments p
         join entries e on e.id = p.entry_id
-        where p.status = 'approved'
+        where p.status = 'approved' and not e.hidden
         order by p.created_at desc
         limit 8
       ) r)

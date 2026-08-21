@@ -14,6 +14,26 @@ export interface CheckoutInput {
   photo?: string;
 }
 
+// Filtro de contenido: bloquea insultos de odio / slurs / explícito.
+// (No bloquea puteadas leves; apunta a lo realmente ofensivo/ilegal.)
+const BLOCKLIST = [
+  // slurs / odio (es/en)
+  "puto", "putos", "puta que", "trolo", "trava", "negro de mierda", "negra de mierda",
+  "sudaca", "villero de mierda", "mogolico", "mogólico", "retrasado", "down de mierda",
+  "faggot", "nigger", "nigga", "retard", "tranny", "kike", "spic", "chink",
+  // sexual explícito / abuso
+  "pornhub", "onlyfans.com", "xvideos", "xnxx", "child", "menor", "pedofil", "zoofil",
+  "cp ", "cepe ", "violacion", "violación",
+];
+
+function hasBlockedContent(text: string): boolean {
+  const t = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, ""); // saca acentos
+  return BLOCKLIST.some((w) => t.includes(w));
+}
+
 function validPhoto(v: unknown): string | undefined {
   if (typeof v !== "string") return undefined;
   if (!/^data:image\/(jpeg|png|webp);base64,/.test(v)) return undefined;
@@ -54,6 +74,10 @@ export function parseCheckoutInput(body: any): { ok: true; value: CheckoutInput 
   }
 
   const message = String(body.message || "").trim().slice(0, 140);
+
+  if (hasBlockedContent(`${handle} ${message}`)) {
+    return { ok: false, error: "Ese contenido no está permitido." };
+  }
 
   return { ok: true, value: { handle, platform, url, message, amount, photo: validPhoto(body.photo) } };
 }

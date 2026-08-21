@@ -29,6 +29,8 @@ export interface Entry {
   total_amount: number;
   boosts: number;
   clicks: number;
+  hidden?: boolean;
+  reports?: number;
   created_at: string;
 }
 
@@ -39,6 +41,7 @@ export interface Payment {
   currency: string;
   status: "pending" | "approved" | "rejected";
   provider_ref: string | null;
+  photo?: string | null;
   created_at: string;
 }
 

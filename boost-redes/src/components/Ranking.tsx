@@ -91,6 +91,22 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
     setOpen(true);
   };
 
+  const [reported, setReported] = useState<Set<string>>(new Set());
+  const report = async (e: Entry) => {
+    if (reported.has(e.id)) return;
+    if (!confirm(`¿Reportar ${e.handle} por contenido inapropiado?`)) return;
+    setReported((s) => new Set(s).add(e.id));
+    try {
+      await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entryId: e.id }),
+      });
+    } catch {
+      /* ignore */
+    }
+  };
+
   const leader = entries[0];
   const top3 = entries.slice(0, 3);
   const rest = entries.slice(3);
@@ -124,6 +140,13 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               <span>👆 {nf(e.clicks)} clic{e.clicks === 1 ? "" : "s"}</span>
               <span className="text-white/25">·</span>
               <span>⚡ {e.boosts} boost{e.boosts === 1 ? "" : "s"}</span>
+              <button
+                onClick={() => report(e)}
+                className="text-white/25 hover:text-white/70"
+                title="Reportar contenido inapropiado"
+              >
+                · {reported.has(e.id) ? "reportado ✓" : "reportar"}
+              </button>
             </div>
           </div>
 
@@ -182,6 +205,13 @@ export default function Ranking({ initialEntries }: { initialEntries: Entry[] })
               <span>👆 {nf(e.clicks)} clic{e.clicks === 1 ? "" : "s"}</span>
               <span className="text-white/25">·</span>
               <span>⚡ {e.boosts} boost{e.boosts === 1 ? "" : "s"}</span>
+              <button
+                onClick={() => report(e)}
+                className="text-white/30 hover:text-white/80"
+                title="Reportar contenido inapropiado"
+              >
+                · {reported.has(e.id) ? "reportado ✓" : "reportar"}
+              </button>
             </div>
           </div>
 

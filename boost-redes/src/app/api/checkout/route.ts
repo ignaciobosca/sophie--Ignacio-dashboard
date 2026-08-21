@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { createEntry, createPayment, getEntry, setPaymentProviderRef, setEntryPhoto } from "@/lib/store";
+import { createEntry, createPayment, getEntry, setPaymentProviderRef, checkRateLimit } from "@/lib/store";
 import { createCheckout } from "@/lib/payments";
 import { parseCheckoutInput } from "@/lib/validate";
+import { clientIp, dedupKey } from "@/lib/bot";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,13 @@ export async function POST(req: Request) {
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
     const input = parsed.value;
 
+    // 0) Rate limit por IP: máx 8 intentos por 10 minutos (anti-spam).
+    const ipKey = "checkout:" + dedupKey(clientIp(req.headers), "");
+    const allowed = await checkRateLimit(ipKey, 8, 600);
+    if (!allowed) {
+      return NextResponse.json({ error: "Demasiados intentos. Probá de nuevo en un rato." }, { status: 429 });
+    }
+
     // 1) Resolver el perfil: existente (boost) o nuevo.
     let entry;
     if (input.entryId) {
@@ -37,13 +45,15 @@ export async function POST(req: Request) {
         url: input.url,
         message: input.message,
       });
-      if (input.photo) {
-        await setEntryPhoto(entry.id, input.photo);
-      }
     }
 
-    // 2) Crear el pago pendiente.
-    const payment = await createPayment({ entry_id: entry.id, amount: input.amount });
+    // 2) Crear el pago pendiente. La foto queda "en espera" y se sube al storage
+    //    recién cuando el pago se acredita (evita subir fotos de checkouts abandonados).
+    const payment = await createPayment({
+      entry_id: entry.id,
+      amount: input.amount,
+      photo: input.entryId ? null : input.photo ?? null,
+    });
 
     // 3) Crear el checkout (MercadoPago o demo).
     const checkout = await createCheckout({
