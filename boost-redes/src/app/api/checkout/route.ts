@@ -5,6 +5,19 @@ import { parseCheckoutInput } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Dominio exacto desde el que llegó la request (ej: https://www.boost-tus-redes.com).
+ * Lo usamos para las URLs de retorno y el webhook de MercadoPago, así apuntan al
+ * dominio real servido y no dependen de redirects (apex -> www) que romperían el aviso de pago.
+ */
+function originFromReq(req: Request): string | undefined {
+  const h = req.headers;
+  const host = h.get("x-forwarded-host") || h.get("host");
+  if (!host) return undefined;
+  const proto = h.get("x-forwarded-proto") || "https";
+  return `${proto}://${host}`;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null);
@@ -35,6 +48,7 @@ export async function POST(req: Request) {
       entryId: entry.id,
       handle: entry.handle,
       amount: input.amount,
+      baseUrl: originFromReq(req),
     });
 
     if (checkout.providerRef) {

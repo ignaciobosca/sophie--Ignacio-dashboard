@@ -24,8 +24,11 @@ export async function createCheckout(params: {
   entryId: string;
   handle: string;
   amount: number;
+  baseUrl?: string;
 }): Promise<{ checkoutUrl: string; providerRef: string | null; demo: boolean }> {
-  const base = siteUrl();
+  // Preferimos el dominio exacto de la request (evita redirects apex->www que
+  // romperían el webhook de MercadoPago). Fallback: NEXT_PUBLIC_SITE_URL / Vercel.
+  const base = params.baseUrl || siteUrl();
 
   if (!usingMercadoPago) {
     // MODO DEMO: mandamos al usuario a una ruta que confirma el pago simulado.
