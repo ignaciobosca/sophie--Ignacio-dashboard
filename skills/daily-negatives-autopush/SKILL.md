@@ -5,10 +5,11 @@ description: >
   daily-negatives-supabase (dashboard_snapshots, tipo='negatives') y, SIN selección ni
   copy-paste, empuja cada candidato irrelevante como negativo a AdLabs, auto-derivando el
   destino desde el producto/línea del candidato: todos los ad groups ENABLED (SP + SB) que
-  anuncian los ASINs de esa línea, menos Scavenger. Keywords al match del snapshot
-  (phrase/exact); ASINs como product target. Deja recibo en Supabase (tipo='negatives_push')
-  para auditoría e idempotencia. NUNCA pushea candidatos sin producto resoluble ("General
-  (sin asignar)"): quedan para el dashboard/manual. Reusa la mecánica de adlabs-push-negatives.
+  anuncian los ASINs de esa línea, menos Scavenger. Empuja SOLO keywords al match del snapshot
+  (phrase/exact). Los ASINs (términos b0…) NUNCA se auto-negativizan: van a un bucket
+  asins_skipped para revisar a mano. Deja recibo en Supabase (tipo='negatives_push') para
+  auditoría e idempotencia. NUNCA pushea candidatos sin producto resoluble ("General (sin
+  asignar)"): quedan para el dashboard/manual. Reusa la mecánica de adlabs-push-negatives.
   Modos: 'run' (default) y 'dry-run'. Trigger: "autopush negatives para [Brand]", "empujá los
   negativos de hoy de [Brand]", "run daily-negatives-autopush for [Brand]", o una Routine. NO
   identifica términos ni hace harvesting positivo.
@@ -43,8 +44,8 @@ crea + aplica los negativos vía el MCP de AdLabs, sin que toques el dashboard.
    jamás significa "todas".
 2. **Nivel = AD GROUP** (`AD_GROUP_NEGATIVE_*`). Sirve para SP y SB, y es quirúrgico.
 3. **Match type = el que trae el snapshot por candidato.** `match:"phrase"` → `AD_GROUP_NEGATIVE_PHRASE`;
-   `match:"exact"` → `AD_GROUP_NEGATIVE_EXACT`; `kind:"asin"` → `AD_GROUP_NEGATIVE_PRODUCT_TARGET`.
-   No lo re-decide el modelo: el snapshot ya lo fijó (con el toggle histórico de Nacho aprendido).
+   `match:"exact"` → `AD_GROUP_NEGATIVE_EXACT`. No lo re-decide el modelo: el snapshot ya lo fijó.
+   (No hay product target acá — ver regla 10: los ASINs no se pushean.)
 4. **Auto-apply.** El flujo va derecho preview → resumen → apply, pero SIEMPRE imprime el resumen
    exacto (qué línea, qué ad groups, cuántos negativos) antes de aplicar. `dry-run` frena antes del apply.
 5. **Solo ENABLED.** Toda fetch de ad groups lleva `CAMPAIGN_STATE=ENABLED` + `AD_GROUP_STATE=ENABLED`.
@@ -55,6 +56,9 @@ crea + aplica los negativos vía el MCP de AdLabs, sin que toques el dashboard.
    pero re-chequeá como red: un término/ASIN que sea del propio cliente se descarta y se reporta.
 9. **Idempotencia.** Si ya se pusheó hoy (hay recibo `negatives_push` del día), saltear los
    candidatos ya aplicados. Re-runs del mismo día no duplican.
+10. **NUNCA auto-negativices ASINs (pedido de Nacho).** Cualquier candidato `kind=="asin"` (término que
+   matchea `^b0[a-z0-9]{8}$`) NO se pushea — va a `asins_skipped[]` para que Nacho lo revise a mano en el
+   informe. El autopush crea **solo** keyword-negatives (phrase/exact), nunca negative product targets.
 
 ---
 
@@ -123,21 +127,25 @@ Si no existe, `already_pushed = {}`.
 ### Step 4 — Preparar candidatos + red de seguridad
 Cada candidato del snapshot trae `{term, clicks, spend, match, root, reason, kind, product, origin_campaign, origin_ad_group}`
 (los dos `origin_*` los persiste `daily-negatives-supabase` Step 5; si un snapshot viejo no los trae, quedan `""`).
-Recorré `candidates`. Por cada uno:
-1. **Retención por producto no resoluble (regla 1):** si `product == "General (sin asignar)"` o la línea no
-   está en `line_asins` → **retener** (no pushear). Sumalo a `held[]` con TODO el contexto para que Nacho
-   decida: `term`, `clicks`, `spend`, `match`, `kind`, `origin_campaign`, `origin_ad_group`, `reason`, y una
-   **`suggested_line`** (best-effort): matcheá `origin_campaign`/`origin_ad_group` contra los nombres de línea de
-   `line_asins` (substring/semántico); si no hay match claro → `suggested_line: null`. NUNCA pushees por la
-   sugerencia — es solo para que Nacho la vea en el informe y decida.
-2. **Red de marca propia (regla 8):** si `kind=="asin"` y el ASIN ∈ `own_asins` → descartar (self-targeting).
-   Si `kind=="keyword"` y el término es claramente marca propia → descartar. Sumar a `dropped_own[]`.
-3. **Red de protected_relevant (regla — última palabra):** cargá `protected_relevant` del perfil
+Recorré `candidates` y clasificá cada uno **en este orden** (el primero que aplica gana):
+1. **Red de marca propia (regla 8):** si `kind=="asin"` y el ASIN ∈ `own_asins` → **descartar** (self-targeting).
+   Si `kind=="keyword"` y el término es claramente marca propia → **descartar**. Sumar a `dropped[]` (`reason:"own_brand"`).
+2. **Red de protected_relevant (regla — última palabra):** cargá `protected_relevant` del perfil
    (`select profile->'protected_relevant' from public.relevance_profiles where brand='<brand_name>'`).
-   Si el término matchea (igualdad o contención/wildcard) una excepción protegida → **descartar** y sumar a
-   `dropped_protected[]`. (No debería aparecer si el snapshot está sano, pero es la red final.)
-4. **Idempotencia:** si `(term, match)` ∈ `already_pushed` → saltear (ya aplicado hoy).
-Los que sobreviven se agrupan por **línea de producto** (`product`) → `push_groups[linea] = {keywords_phrase[], keywords_exact[], asins[]}`.
+   Si el término matchea (igualdad o contención/wildcard) una excepción protegida → **descartar**
+   (`dropped[]`, `reason:"protected_relevant"`). (No debería aparecer si el snapshot está sano; red final.)
+3. **ASINs NUNCA se auto-negativizan (regla 10 — pedido de Nacho):** si `kind=="asin"` (el término matchea
+   `^b0[a-z0-9]{8}$`) → **NO pushear.** Sumalo a `asins_skipped[]` con TODO el contexto (`term`, `clicks`,
+   `spend`, `product`, `origin_campaign`, `origin_ad_group`, `reason`) para que Nacho lo vea en el informe y
+   decida a mano. **El autopush pushea SOLO keywords.**
+4. **Retención por producto no resoluble (regla 1)** — ya solo keywords: si `product == "General (sin
+   asignar)"` o la línea no está en `line_asins` → **retener** (no pushear). Sumalo a `held[]` con TODO el
+   contexto para que Nacho decida: `term`, `clicks`, `spend`, `match`, `kind`, `origin_campaign`,
+   `origin_ad_group`, `reason`, y una **`suggested_line`** (best-effort): matcheá `origin_campaign`/
+   `origin_ad_group` contra los nombres de línea de `line_asins`; si no hay match claro → `suggested_line: null`.
+   NUNCA pushees por la sugerencia — es solo para el informe.
+5. **Idempotencia:** si `(term, match)` ∈ `already_pushed` → saltear (ya aplicado hoy).
+Los keywords que sobreviven se agrupan por **línea de producto** (`product`) → `push_groups[linea] = {keywords_phrase[], keywords_exact[]}` (**sin ASINs** — nunca).
 
 ### Step 5 — Resolver destino por línea + crear previews (reusa adlabs-push-negatives Paso 3–5)
 Por cada `linea` en `push_groups`:
@@ -155,20 +163,21 @@ get_entity_data(entity_type="ad_group", team_id, profile_id, chat_session_id,
    con motivo "sin ad groups ENABLED que anuncien esta línea". (Nunca apliques sobre reference vacía.)
 5. **Validar términos** (límites Amazon): ≤80 chars; PHRASE ≤4 palabras; EXACT ≤10 palabras. El que viole se
    saltea en el apply (avisalo). Deduplicá.
-6. **Crear previews** (hasta 3 por línea):
+6. **Crear previews** (solo keywords — los ASINs NO se pushean, regla 10):
    - keywords phrase → `create_entities(negative_targeting, reference=<ref>, keywords=[...phrase...], match_types=["AD_GROUP_NEGATIVE_PHRASE"])`
    - keywords exact → `create_entities(negative_targeting, reference=<ref>, keywords=[...exact...], match_types=["AD_GROUP_NEGATIVE_EXACT"])`
-   - asins → `create_entities(negative_targeting, reference=<ref>, expressions=["asin=\"B0...\"", ...], match_types=["AD_GROUP_NEGATIVE_PRODUCT_TARGET"])`
-   Cada uno devuelve un `preview_id` + link "View in AdLabs". Conteo esperado = ad groups × match_types × términos
-   (producto cartesiano; los ya-existentes se saltean recién en el apply).
+   Cada uno devuelve un `preview_id` + link "View in AdLabs". Conteo esperado = ad groups × match_types × keywords
+   (producto cartesiano; los ya-existentes se saltean recién en el apply). **Nunca** crees previews de product
+   target (`AD_GROUP_NEGATIVE_PRODUCT_TARGET`) en el autopush.
 
 ### Step 6 — Resumen (imprimir SIEMPRE) + apply
 Imprimí, por línea, el destino resuelto y los conteos antes de aplicar. Ejemplo:
 > **Autopush {brand} — {fecha}:**
 > - Línea **Hair Growth Serum** → 8 ad groups ENABLED (SP+SB) que anuncian sus 2 ASINs (2 Scavenger excluidas)
->   - 5 kw PHRASE × 8 ad groups = 40 · 3 kw EXACT × 8 = 24 · 1 ASIN PT × 8 = 8  (previews #a/#b/#c)
-> - Línea **Body Glue** → 3 ad groups · 2 kw EXACT × 3 = 6 (preview #d)
-> - **Retenidos (no pusheados):** 4 candidatos sin producto resoluble → quedan para el dashboard.
+>   - 5 kw PHRASE × 8 ad groups = 40 · 3 kw EXACT × 8 = 24  (previews #a/#b)
+> - Línea **Body Glue** → 3 ad groups · 2 kw EXACT × 3 = 6 (preview #c)
+> - **ASINs (no auto-negados):** 3 términos b0… → quedan para revisar a mano en el informe.
+> - **Retenidos (no pusheados):** 4 keywords sin producto resoluble → quedan para el dashboard.
 
 **Si modo = `dry-run`:** parás acá. Mostrá los links "View in AdLabs" y los conteos. No apliques.
 
@@ -185,17 +194,20 @@ Construí `datos` schema `negatives-push-v1` y upserteá:
 { "schema":"negatives-push-v1", "generated_at_iso":"<ISO ART>",
   "brand":"<brand_name>", "marketplace":"US", "currency_prefix":"$",
   "date_iso":"<HOY-ART>", "data_window":"<ayer, del snapshot>",
-  "summary":{"applied_terms":N,"created":N,"skipped_existing":N,"held":N,"dropped":N,
-             "held_spend":F,"ad_groups_touched":N,"lines":N},
-  "applied":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact|product_target","kind":"keyword|asin",
+  "summary":{"applied_terms":N,"created":N,"skipped_existing":N,"held":N,"asins_skipped":N,"dropped":N,
+             "held_spend":F,"asins_spend":F,"ad_groups_touched":N,"lines":N},
+  "applied":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact","kind":"keyword",
               "line":"...","ad_groups":N,"created":N,"skipped":N,"preview_id":"..."}],
-  "held":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact","kind":"keyword|asin",
+  "held":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact","kind":"keyword",
            "product":"General (sin asignar)","reason":"General (sin asignar) | sin ad groups ENABLED | ...",
            "origin_campaign":"...","origin_ad_group":"...","suggested_line":"<linea>|null"}],
+  "asins_skipped":[{"term":"b0xxxxxxxx","clicks":N,"spend":F,"kind":"asin","product":"<linea|General>",
+                    "origin_campaign":"...","origin_ad_group":"...","reason":"ASIN - no auto-negado (regla de Nacho)"}],
   "dropped":[{"term":"...","reason":"own_brand | protected_relevant | limit_violation"}] }
 ```
-`held_spend` = suma de `spend` de los retenidos (para priorizar cuáles resolver primero). El informe diario del
-Master Dashboard (tab **Push**) lee estas filas — ver `skills/push-report/` para el composer y el template.
+`held_spend`/`asins_spend` = suma de `spend` de retenidos / de ASINs skippeados (para priorizar). `applied`/`held`
+son **solo keywords** (`kind:"keyword"`); los ASINs viven en `asins_skipped[]`. El informe diario del Master
+Dashboard (tab **Push**) lee estas filas — ver `skills/push-report/` para el composer y el template.
 ```sql
 insert into public.dashboard_snapshots (cliente, tipo, fecha, datos)
 values ('<brand_name>', 'negatives_push', '<HOY-ART>', $push$<datos>$push$::jsonb)
@@ -204,7 +216,7 @@ on conflict (cliente, tipo, fecha) do update set datos = excluded.datos, actuali
 > **Merge en re-run:** si ya había recibo hoy, MERGEá `applied[]` (no lo pises) — sumá solo lo nuevo de este run.
 
 Confirmá:
-`Autopush {brand} — {fecha}: {created} negativos creados en {ad_groups_touched} ad groups ({lines} líneas), {skipped_existing} ya existían, {held} retenidos, {dropped} descartados por red de seguridad.`
+`Autopush {brand} — {fecha}: {created} keyword-negatives creados en {ad_groups_touched} ad groups ({lines} líneas), {skipped_existing} ya existían, {asins_skipped} ASINs no auto-negados (para revisar), {held} retenidos, {dropped} descartados.`
 
 ---
 
@@ -231,7 +243,8 @@ destino que derivó el skill sin tocar Amazon. No escribe recibo (o lo escribe c
 |---|---|
 | No hay snapshot de negatives hoy | STOP suave, no pushea. "Corré daily-negatives-supabase primero." |
 | Snapshot con candidates:[] | Nada que pushear. Fin limpio. |
-| Candidato `product = "General (sin asignar)"` | RETENER (no push). Queda para el dashboard. Reportado en `held`. |
+| Candidato `kind=="asin"` (término b0…) | NUNCA se pushea (regla 10). Va a `asins_skipped[]` para revisar a mano. |
+| Candidato `product = "General (sin asignar)"` (keyword) | RETENER (no push). Queda para el dashboard. Reportado en `held`. |
 | Línea sin ad groups ENABLED que la anuncien | RETENER esa línea (reference vacía). Nunca aplicar sobre 0 filas. |
 | Campaña Scavenger en el destino | Excluida (regla 6). Reportar cuántas. |
 | Término/ASIN de marca propia o managed_asins | Descartar (red regla 8). Reportado en `dropped`. |

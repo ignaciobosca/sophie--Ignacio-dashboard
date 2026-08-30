@@ -45,6 +45,8 @@ todo (candidatos, pushes, revisiones), pero ya no tenés que seleccionar ni copi
   anuncian el ASIN/línea del candidato, **menos Scavenger**. Nunca a "toda la cuenta".
 - **Guardrail duro:** un candidato sin producto resoluble a ASINs concretos (`General (sin asignar)`)
   **NO se pushea** — queda para el dashboard/manual. Un destino vacío jamás significa "todas".
+- **ASINs nunca se auto-negativizan** (regla de Nacho): los términos `b0…` (`kind:"asin"`) no se pushean;
+  van a `asins_skipped[]` y se muestran en el tab Push para decidir a mano. El autopush crea solo keyword-negatives.
 - **Revisión semanal = propone, Nacho confirma.** Des-negar reabre gasto, así que no se archiva sin OK.
   El OK alimenta `protected_relevant` (learn) → el sistema deja de re-negar ese término.
 - **Loose Match por patrón:** las campañas se descubren por nombre que contiene `loose` **y**

@@ -84,9 +84,12 @@ Decime: **"aplicá el tab Push al template del master dashboard"**. Voy a:
 
 - **KPIs:** Creados · Retenidos · Spend retenido.
 - **Pusheado a AdLabs** (`applied[]`): término · clicks · spend · negado como · producto/línea · ad groups · creados · ya estaban.
-- **Retenidos — decidir producto** (`held[]`, ordenados por spend desc): término · clicks · spend · tipo · match ·
-  **campaña de origen** · ad group · **línea sugerida** · motivo. Es la lista accionable: con esa info decidís
-  a qué línea pertenece y lo mandás a pushear.
+- **Retenidos — decidir producto** (`held[]`, solo keywords, ordenados por spend desc): término · clicks · spend ·
+  tipo · match · **campaña de origen** · ad group · **línea sugerida** · motivo. Es la lista accionable: con esa
+  info decidís a qué línea pertenece y lo mandás a pushear.
+- **ASINs detectados — no auto-negados** (`asins_skipped[]`): los términos `b0…` que el autopush **nunca**
+  auto-negativiza (regla de Nacho). ASIN · clicks · spend · producto · campaña/ad group de origen · motivo. Si
+  querés negar alguno como product target, lo hacés a mano vía `adlabs-push-negatives`.
 - **Descartados por red de seguridad** (`dropped[]`): chips (marca propia / protegido / límite) — solo informativo.
 
 ---
@@ -124,7 +127,8 @@ for cli, snaps in push_by_client.items():
         "currency_prefix": newest.get("currency_prefix", "$"),
         "days": [{"date_iso": s.get("date_iso", ""), "data_window": s.get("data_window", ""),
                   "summary": s.get("summary", {}), "applied": s.get("applied", []),
-                  "held": s.get("held", []), "dropped": s.get("dropped", [])} for s in snaps],
+                  "held": s.get("held", []), "asins_skipped": s.get("asins_skipped", []),
+                  "dropped": s.get("dropped", [])} for s in snaps],
     })
 ```
 Y en el dict `DATA`, agregar `"push": {"clients": push_clients},` (entre `negatives` y `harvest`).

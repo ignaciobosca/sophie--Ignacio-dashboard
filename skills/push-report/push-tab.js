@@ -48,13 +48,13 @@ function renderPush(){
 
     function renderDay(di){
       const d=days[di]||{}; const s=d.summary||{};
-      const applied=d.applied||[], held=d.held||[], dropped=d.dropped||[];
+      const applied=d.applied||[], held=d.held||[], asins=d.asins_skipped||[], dropped=d.dropped||[];
       $('#pu-cre-'+ci).textContent=(s.created!=null?s.created:applied.reduce((a,x)=>a+(x.created||0),0));
       $('#pu-held-'+ci).textContent=(s.held!=null?s.held:held.length);
       const heldSpend=(s.held_spend!=null?s.held_spend:held.reduce((a,x)=>a+(x.spend||0),0));
       $('#pu-hs-'+ci).textContent=money(heldSpend,cp);
       $('#pu-meta-'+ci).textContent=(d.data_window?('Datos: '+d.data_window+' - '):'')+
-        `${applied.length} aplicados - ${held.length} retenidos - ${dropped.length} descartados`;
+        `${applied.length} aplicados - ${held.length} retenidos - ${asins.length} ASINs - ${dropped.length} descartados`;
 
       body.innerHTML='';
 
@@ -101,6 +101,28 @@ function renderPush(){
           'el autopush de nuevo - ya con producto resoluble los aplica.';
         body.appendChild(hint);
       } else body.appendChild(el('div','empty','Sin retenidos este dia. Todo se pudo asignar y pushear.'));
+
+      // --- ASINs (no auto-negados) - decidir a mano ---
+      const h4=el('div'); h4.style.cssText='font-weight:600;margin:16px 0 4px;color:var(--blue)';
+      h4.innerHTML=`ASINs detectados - no auto-negados (${asins.length})`;
+      body.appendChild(h4);
+      if(asins.length){
+        const tw3=el('div'); tw3.style.overflowX='auto';
+        const t3=el('table');
+        t3.innerHTML='<thead><tr><th class="term">ASIN</th><th class="num">Clk</th><th class="num">Spend</th>'+
+          '<th>Producto / linea</th><th>Campania de origen</th><th>Ad group</th><th>Motivo</th></tr></thead>';
+        const tb3=el('tbody');
+        asins.slice().sort((a,b)=>(b.spend||0)-(a.spend||0)).forEach(x=>tb3.appendChild(el('tr','',
+          `<td class="term">${escapeHtml(x.term)}</td><td class="num">${x.clicks!=null?x.clicks:'-'}</td>`+
+          `<td class="num">${money(x.spend,cp)}</td><td>${escapeHtml(x.product||'')}</td>`+
+          `<td class="dim">${escapeHtml(x.origin_campaign||'-')}</td><td class="dim">${escapeHtml(x.origin_ad_group||'-')}</td>`+
+          `<td class="dim">${escapeHtml(x.reason||'ASIN - no auto-negado')}</td>`)));
+        t3.appendChild(tb3); tw3.appendChild(t3); body.appendChild(tw3);
+        const hintA=el('div','note'); hintA.style.marginTop='8px';
+        hintA.innerHTML='Los ASINs (terminos b0...) NO se auto-negativizan por regla. Si queres negar alguno como '+
+          'product target, deci: <b>"negativiza el ASIN b0... en '+escapeHtml(c.brand_name)+'"</b> (via adlabs-push-negatives).';
+        body.appendChild(hintA);
+      } else body.appendChild(el('div','empty','Sin ASINs detectados este dia.'));
 
       // --- DESCARTADOS (red de seguridad) - resumen ---
       if(dropped.length){
