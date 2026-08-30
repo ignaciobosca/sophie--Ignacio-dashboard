@@ -9,8 +9,8 @@ connectors **Supabase + Adlabs**.
 
 | Hora ART | Hora UTC | Routine | Estado |
 |---|---|---|---|
-| 06:00–06:30 | 09:00–09:30 | **Daily Negatives** (identificador, 4 batches) — ya existe | escribe snapshot `negatives` |
-| **07:30–07:45** | **10:30–10:45** | **Autopush** (4 batches) ← NUEVA | lee snapshot, pushea keywords, recibo `negatives_push` |
+| 06:00–06:30 | 09:00–09:30 | **Daily Negatives** (identificador, en batches de 5) — ya existe | escribe snapshot `negatives` |
+| **07:30 + offsets** | **10:30 + offsets** | **Autopush** (en batches de 5) ← NUEVA | lee snapshot, pushea keywords, recibo `negatives_push` |
 | 08:30 | 11:30 | **Master Dashboard Composer** — ya existe | publica el dashboard (con el tab Push) |
 | Viernes 08:00 | Viernes 11:00 | **Weekly Negatives Review** ← NUEVA | propone archivar (no archiva solo) |
 
@@ -19,31 +19,38 @@ en el dashboard de esa mañana.
 
 ---
 
-## 1) Autopush diario — 4 batches (RECOMENDADO)
+## 1) Autopush diario — en batches de 5 clientes (RECOMENDADO)
 
-**Layout recomendado:** 4 Routines de 5 clientes cada una, escalonadas (igual que tu "Daily Negatives").
+**Layout recomendado:** **una Routine por cada grupo de 5 clientes**, escalonadas +5 min (igual que tu
+"Daily Negatives"). La **cantidad de batches = ceil(clientes_activos / 5)**: hoy son **20 activos → 4
+batches**; si pasás a 25 → 5 batches, a 30 → 6, etc. Cuando agregás/sacás clientes, ajustás los grupos
+(y agregás/quitás una Routine si cruzás un múltiplo de 5).
 
 **Por qué batches y no una sola:**
-- **Resiliencia:** si un batch falla (AdLabs tira error, una reference expira), los otros 3 siguen.
-- **Entra en la ventana:** ~1h entre el identificador (termina ~06:50 ART) y el composer (08:30 ART); 4 batches escalonados terminan holgados; una corrida única de 20 podría pasarse.
+- **Resiliencia:** si un batch falla (AdLabs tira error, una reference expira), los demás siguen.
+- **Entra en la ventana:** ~1h entre el identificador (termina ~06:50 ART) y el composer (08:30 ART); los batches escalonados terminan holgados; una corrida única de todos podría pasarse.
 - **Reparte la carga de AdLabs** y mantiene cada sesión corta.
 - **Idempotente:** el recibo del día evita duplicados, así que re-correr un batch es seguro.
 
-**Config (las 4):**
-- **Crons (UTC):** `30 10 * * *` · `35 10 * * *` · `40 10 * * *` · `45 10 * * *`  (07:30–07:45 ART)
+**Config (todas):**
+- **Cron:** uno por batch, arrancando **10:30 UTC (07:30 ART)** y **+5 min por batch**: `30 10 * * *`,
+  `35 10 * * *`, `40 10 * * *`, `45 10 * * *`, `50 10 * * *`, … (sumá los que necesites según cuántos batches tengas).
 - **Entorno:** Daily Check · **sesión nueva por corrida** · **sin repo**
 - **Connectors:** **Supabase + Adlabs**
 - **Notificaciones:** push/email a gusto.
-- Partí los ~20 clientes en 4 grupos de 5 (a las 07:30 ya están **todos** los snapshots escritos, así que el grupo no tiene que coincidir con el del identificador).
+- Partí los clientes activos en grupos de 5 (a las 07:30 ya están **todos** los snapshots escritos, así que el grupo no tiene que coincidir con el del identificador).
 
-**Batches concretos (20 marcas activas, alfabético):**
+**Split actual — hoy (20 marcas activas, alfabético → 4 batches).** Es una foto de hoy; recalculalo cuando cambie la lista de clientes:
 
 | Batch | Cron (UTC) | Hora ART | Marcas |
 |---|---|---|---|
-| 1 (offset 0) | `30 10 * * *` | 07:30 | Ayurveda Wellness · BloomTrail · Chill Rover · Dr. Cohen's Acuball · DynamoMe |
-| 2 (offset 5) | `35 10 * * *` | 07:35 | Every Cloud · Farm Made Organics · Happy Fox · Happy Fox (CA) · Hekaya |
-| 3 (offset 10) | `40 10 * * *` | 07:40 | House of Thalen · Leefy Organics · Masofta Inc · Moomade · Natchiketa |
-| 4 (offset 15) | `45 10 * * *` | 07:45 | Pavida's · Poop Juice · Second Kind · Zola Zola · ZzzPedic |
+| 1 | `30 10 * * *` | 07:30 | Ayurveda Wellness · BloomTrail · Chill Rover · Dr. Cohen's Acuball · DynamoMe |
+| 2 | `35 10 * * *` | 07:35 | Every Cloud · Farm Made Organics · Happy Fox · Happy Fox (CA) · Hekaya |
+| 3 | `40 10 * * *` | 07:40 | House of Thalen · Leefy Organics · Masofta Inc · Moomade · Natchiketa |
+| 4 | `45 10 * * *` | 07:45 | Pavida's · Poop Juice · Second Kind · Zola Zola · ZzzPedic |
+
+> **Tip:** para recalcular el split cuando cambien los clientes, corré en Supabase:
+> `select brand from public.clients where active = true order by brand;` y armá grupos de 5 en ese orden.
 
 ### Prompt por batch — DRY-RUN (recomendado para estrenar)
 Escribe el recibo (el tab Push muestra lo que HARÍA) pero **no aplica nada** a Amazon. Reemplazá
@@ -75,10 +82,11 @@ Ancla "hoy" a ART. Continua ante error. No pidas confirmacion. Proyecto Supabase
 ```
 
 ### Alternativa — una sola Routine all-clients (mínimo mantenimiento)
-Si preferís no mantener 4: 1 Routine, cron `30 10 * * *`, el mismo prompt pero **"para CADA cliente
-activo en Supabase (public.clients donde active = true)"** en vez de las 5 marcas. Más simple, pero corre
-los ~20 en una sola sesión larga (puede pasarse de la ventana del composer; el push igual queda en
-Supabase y lo toma el compose siguiente). Es segura por la idempotencia, solo menos resiliente/puntual.
+Si preferís no mantener varias: 1 Routine, cron `30 10 * * *`, el mismo prompt pero **"para CADA cliente
+activo en Supabase (public.clients donde active = true)"** en vez de las 5 marcas. Más simple (no hay que
+recalcular grupos al agregar clientes), pero corre todos en una sola sesión larga (puede pasarse de la
+ventana del composer; el push igual queda en Supabase y lo toma el compose siguiente). Segura por la
+idempotencia, solo menos resiliente/puntual.
 
 ---
 
