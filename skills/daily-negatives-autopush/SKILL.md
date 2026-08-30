@@ -234,9 +234,15 @@ Confirmá:
 ---
 
 ## MODE = dry-run
-Idéntico hasta el Step 6, sin aplicar. Útil para la primera corrida de un cliente nuevo, o para revisar el
-destino que derivó el skill sin tocar Amazon. No escribe recibo (o lo escribe con `summary.mode:"dry-run"` y
-`applied:[]` si Nacho quiere ver qué HABRÍA hecho — por default no escribe).
+Idéntico hasta el Step 6, **sin aplicar** (no llama `negative_targeting_apply`). Útil para estrenar la
+automatización o revisar el destino sin tocar Amazon.
+- **Por default (dry-run ad-hoc):** no escribe recibo; solo imprime el resumen + los links "View in AdLabs".
+- **Dry-run + recibo (para poblar el tab Push):** si te lo piden (típicamente la Routine de estreno), **SÍ**
+  escribe el recibo `negatives_push` con `summary.mode:"dry-run"` y **`applied[]` = lo que HABRÍA creado**
+  (término, match, línea, `ad_groups`, `created` = conteo del preview), más `held`/`asins_skipped`/`dropped`
+  completos. Así el dashboard muestra el plan del día sin haber aplicado nada. El conteo `created` sale del
+  preview (contá los `skipped` de PT ad groups). Cuando pases a apply real, el mismo recibo se escribe sin
+  el flag `mode`.
 
 ---
 
