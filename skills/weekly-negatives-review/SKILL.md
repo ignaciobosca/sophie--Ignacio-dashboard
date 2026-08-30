@@ -4,12 +4,11 @@ description: >
   La red de seguridad SEMANAL del negative targeting automático. Por cliente, descubre las
   campañas "Loose Match - High Likelihood" (una por ASIN/producto) por PATRÓN de nombre
   (contiene "loose" Y "high likelihood", case-insensitive), lee los negativos aplicados ahí en
-  los ULTIMOS 30 DIAS (no el historico entero: las Loose Match acumulan 2k+), saltea los ya
-  confirmados por roots/competitors, y re-juzga el resto contra el producto + el relevance_profile
-  para detectar negativos que podrían estar bloqueando tráfico RELEVANTE. Arma una lista de "candidatos a archivar"
-  con motivo y confianza, y la propone — NO archiva nada sin tu OK. Cuando confirmás, archiva
-  esos negativos en AdLabs y los agrega a protected_relevant (learn) para que el push diario
-  deje de re-negarlos. Escribe un snapshot de review a Supabase para auditoría. Trigger:
+  los ULTIMOS 30 DIAS (no el historico entero), saltea los ya confirmados por roots/competitors,
+  y re-juzga el resto contra el producto + el relevance_profile para detectar negativos que
+  podrían estar bloqueando tráfico RELEVANTE. Propone una lista de "candidatos a archivar" con
+  motivo y confianza — NO archiva nada sin tu OK. Cuando confirmás, archiva esos negativos en
+  AdLabs y los agrega a protected_relevant para que el push no los re-negue. Trigger:
   "weekly negatives review para [Brand]", "revisá los negativos de [Brand]", "run
   weekly-negatives-review for [Brand]", o una Routine semanal que nombre una marca. NO
   identifica términos nuevos ni pushea negativos (eso es daily-negatives-supabase / -autopush).
