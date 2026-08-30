@@ -126,8 +126,10 @@ where cliente = '<brand_name>' and tipo = 'negatives' and fecha = '<HOY-ART YYYY
 select datos from public.dashboard_snapshots
 where cliente = '<brand_name>' and tipo = 'negatives_push' and fecha = '<HOY-ART>';
 ```
-Si existe, armá `already_pushed` = set de `(term, match)` ya aplicados (de `datos.applied[]`). En Step 6 se saltean.
-Si no existe, `already_pushed = {}`.
+Si existe, armá `already_pushed` = set de `(term, match, line)` ya aplicados (de `datos.applied[]`). En Step 6 se saltean.
+Si no existe, `already_pushed = {}`. **Clave por línea (no solo term+match):** un mismo término puede negarse en
+dos líneas distintas el mismo día; incluir `line` evita que un re-run parcial (falló después de la línea A,
+antes de la B) saltee la línea B por error.
 
 ### Step 4 — Preparar candidatos + red de seguridad
 Cada candidato del snapshot trae `{term, clicks, spend, match, root, reason, kind, product, origin_campaign, origin_ad_group}`
@@ -152,7 +154,7 @@ Recorré `candidates` y clasificá cada uno **en este orden** (el primero que ap
    `origin_ad_group`, `reason`, y una **`suggested_line`** (best-effort): matcheá `origin_campaign`/
    `origin_ad_group` contra los nombres de línea de `line_asins`; si no hay match claro → `suggested_line: null`.
    NUNCA pushees por la sugerencia — es solo para el informe.
-6. **Idempotencia:** si `(term, match)` ∈ `already_pushed` → saltear (ya aplicado hoy).
+6. **Idempotencia:** si `(term, match, line)` ∈ `already_pushed` → saltear (ya aplicado hoy para esa línea).
 Los keywords que sobreviven se agrupan por **línea de producto** (`product`) → `push_groups[linea] = {keywords_phrase[], keywords_exact[]}` (**sin ASINs** — nunca).
 
 ### Step 5 — Resolver destino por línea + crear previews (reusa adlabs-push-negatives Paso 3–5)
