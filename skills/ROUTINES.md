@@ -34,7 +34,16 @@ en el dashboard de esa mañana.
 - **Entorno:** Daily Check · **sesión nueva por corrida** · **sin repo**
 - **Connectors:** **Supabase + Adlabs**
 - **Notificaciones:** push/email a gusto.
-- Partí los ~20 clientes en 4 grupos de 5 — podés reusar los grupos de tu "Daily Negatives" o armarlos como quieras (a las 07:30 ya están **todos** los snapshots escritos, así que el grupo no tiene que coincidir con el del identificador).
+- Partí los ~20 clientes en 4 grupos de 5 (a las 07:30 ya están **todos** los snapshots escritos, así que el grupo no tiene que coincidir con el del identificador).
+
+**Batches concretos (20 marcas activas, alfabético):**
+
+| Batch | Cron (UTC) | Hora ART | Marcas |
+|---|---|---|---|
+| 1 (offset 0) | `30 10 * * *` | 07:30 | Ayurveda Wellness · BloomTrail · Chill Rover · Dr. Cohen's Acuball · DynamoMe |
+| 2 (offset 5) | `35 10 * * *` | 07:35 | Every Cloud · Farm Made Organics · Happy Fox · Happy Fox (CA) · Hekaya |
+| 3 (offset 10) | `40 10 * * *` | 07:40 | House of Thalen · Leefy Organics · Masofta Inc · Moomade · Natchiketa |
+| 4 (offset 15) | `45 10 * * *` | 07:45 | Pavida's · Poop Juice · Second Kind · Zola Zola · ZzzPedic |
 
 ### Prompt por batch — DRY-RUN (recomendado para estrenar)
 Escribe el recibo (el tab Push muestra lo que HARÍA) pero **no aplica nada** a Amazon. Reemplazá
