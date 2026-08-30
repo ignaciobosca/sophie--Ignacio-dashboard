@@ -91,7 +91,9 @@ y lo toma el compose siguiente). Segura por la idempotencia, solo menos resilien
 - **Cron (UTC):** `0 11 * * 5`  (viernes 08:00 ART)
 - **Entorno:** Daily Check · **sesión nueva por corrida** · **sin repo**
 - **Connectors:** **Supabase + Adlabs**
-- Alcance: una sola Routine all-clients alcanza (es liviana: solo lee y propone). Si querés, la podés batchear igual que el autopush.
+- Alcance: con la **ventana de 30 días** + skip de confirmados el volumen queda bajo, así que **una sola
+  Routine all-clients alcanza**. Si igual te queda pesada (muchos clientes), batcheala por offset como el
+  autopush (mismo prompt + `... limit 5 offset N`, crons `0 11`, `5 11`, `10 11`… los viernes).
 
 > **Importante:** este skill **PROPONE, no archiva solo** (archivar en AdLabs es irreversible). Corriendo
 > desatendido llega hasta la propuesta y la deja en Supabase con `status:"pending"`; **vos confirmás**
@@ -103,8 +105,10 @@ Para CADA cliente activo en Supabase (proyecto POD 66 "awhiobrcgghyiycxukjm",
 tabla public.clients donde active = true), corré el skill weekly-negatives-review para esa marca:
 - Descubri las campanas "Loose Match - High Likelihood" por patron de nombre (contiene "loose" Y
   "high likelihood", case-insensitive), una por ASIN.
-- Lee los negativos aplicados ahi (entity negative_targeting, NEGATIVE_TARGET_STATE=ENABLED) y
-  re-juzga cada uno contra el producto + el relevance_profile.
+- Lee los negativos aplicados ahi (entity negative_targeting, NEGATIVE_TARGET_STATE=ENABLED) creados
+  en los ULTIMOS 30 DIAS (filtro CREATED_AT >= hoy-30). Dedup por (texto, match), juzga cada termino UNA vez.
+- Salta (keep, no re-juzgues) los terminos ya confirmados por roots/competitors del relevance_profile;
+  re-juzga solo los que el perfil NO explica, mas los que matcheen protected_relevant (esos = archivar).
 - Arma la propuesta de candidatos a archivar (los que podrian bloquear trafico relevante) con motivo y
   confianza, y escribila a Supabase (tipo='negatives_review', fecha=hoy ART) con status='pending'.
   NO archives nada (espera el OK manual de Nacho).

@@ -3,9 +3,10 @@ name: weekly-negatives-review
 description: >
   La red de seguridad SEMANAL del negative targeting automático. Por cliente, descubre las
   campañas "Loose Match - High Likelihood" (una por ASIN/producto) por PATRÓN de nombre
-  (contiene "loose" Y "high likelihood", case-insensitive), lee TODOS los negativos aplicados
-  ahí, y re-juzga cada uno contra el producto + el relevance_profile para detectar negativos
-  que podrían estar bloqueando tráfico RELEVANTE. Arma una lista de "candidatos a archivar"
+  (contiene "loose" Y "high likelihood", case-insensitive), lee los negativos aplicados ahí en
+  los ULTIMOS 30 DIAS (no el historico entero: las Loose Match acumulan 2k+), saltea los ya
+  confirmados por roots/competitors, y re-juzga el resto contra el producto + el relevance_profile
+  para detectar negativos que podrían estar bloqueando tráfico RELEVANTE. Arma una lista de "candidatos a archivar"
   con motivo y confianza, y la propone — NO archiva nada sin tu OK. Cuando confirmás, archiva
   esos negativos en AdLabs y los agrega a protected_relevant (learn) para que el push diario
   deje de re-negarlos. Escribe un snapshot de review a Supabase para auditoría. Trigger:
@@ -106,28 +107,46 @@ get_entity_data(entity_type="campaign", team_id, profile_id, chat_session_id,
   lo correcto (los nombres varían: "Loose - Comps" / "Loose - Close", pero siempre "loose" + "high likelihood").
 - **Si 0 campañas:** avisá y ofrecé fallback: leer los negativos a **nivel cuenta**. No inventes campañas.
 
-### Step 3 — Leer los negativos aplicados en esas campañas
+### Step 3 — Leer los negativos aplicados en esas campañas — **SOLO últimos 30 días**
 > **Entidad confirmada:** `negative_targeting` (schema `adlabs://schema/filters/negative_targeting`).
-Traé los negativos (keyword + product target) que viven en las `loose_campaigns`:
+> **⚠️ Ventana obligatoria `CREATED_AT` últimos 30 días (pedido de Nacho):** las campañas Loose Match
+> acumulan **miles** de negativos históricos (2k+). Re-juzgarlos TODOS cada semana es carísimo, redundante
+> (los viejos ya estaban validados) y peligroso (más chances de que el modelo marque mal uno bueno para
+> archivar, y archivar es irreversible). Los falsos positivos que este review busca cazar son, por
+> definición, **los que el autopush aplicó hace poco** — así que revisar los creados en los últimos 30 días
+> cubre exactamente esa superficie y mantiene el volumen manejable.
+
 ```
 get_entity_data(entity_type="negative_targeting", team_id, profile_id, chat_session_id,
   filters=[ {"key":"CAMPAIGN_ID","conditions":[{"operator":"IN","values":["<id1>","<id2>",...]}]},
-            {"key":"NEGATIVE_TARGET_STATE","conditions":[{"operator":"=","values":["ENABLED"]}]} ])
+            {"key":"NEGATIVE_TARGET_STATE","conditions":[{"operator":"=","values":["ENABLED"]}]},
+            {"key":"CREATED_AT","conditions":[{"operator":">=","values":["<hoy-30 ART>"]}],"logical_operator":"AND"} ])
 ```
 Filtros útiles del schema: `TARGET_TYPE` (KEYWORD|PRODUCT_TARGET), `NEGATIVE_KEYWORD_MATCH_TYPE`
 (NEGATIVE_EXACT|NEGATIVE_PHRASE|NEGATIVE_BROAD), `NEGATIVE_TARGETING_LEVEL` (CAMPAIGN|AD_GROUP),
-`NEGATIVE_TARGETING` (texto, LIKE), `CREATED_AT`. La reference row-level trae por negativo: `id`,
-`match_type_raw`, `campaign_id` (columnas que exige el archivado del Step 5) + el texto/expresión, nivel y
-ad group. Para volumen alto, `download_data` a CSV. **Guardá la reference** — la reusás para archivar.
-> Nota: los negativos **ARCHIVED se excluyen server-side** (no se pueden traer). Solo ves ENABLED/PAUSED,
-> que es justo lo que querés revisar.
+`NEGATIVE_TARGETING` (texto, LIKE). La reference row-level trae por negativo: `id`, `match_type_raw`,
+`campaign_id` (columnas que exige el archivado del Step 5) + el texto/expresión, nivel, ad group y
+`CREATED_AT`. Para volumen alto, `download_data` a CSV. **Guardá la reference** — la reusás para archivar.
+> Nota: los negativos **ARCHIVED se excluyen server-side** (no se pueden traer). Solo ves ENABLED/PAUSED.
+> **Cobertura:** el autopush aplica cada término a TODOS los ad groups de la línea, incluida la Loose Match,
+> así que revisar la Loose Match ≈ revisar todo lo auto-pusheado. (Si algún producto no tuviera Loose Match,
+> esos términos se escapan del review — poco común; si pasa, ampliá el scope a nivel cuenta con `CREATED_AT`.)
 
-Dedup por `(texto, match_type)` conservando `id`/`campaign_id`/`match_type_raw` (se necesitan para archivar).
+Dedup por `(texto, match_type)` conservando `id`/`campaign_id`/`match_type_raw` (se necesitan para archivar) —
+**juzgás cada término único UNA vez**, no una vez por ad group.
 
 ### Step 4 — Re-juzgar cada negativo + armar la propuesta
-Por cada negativo aplicado, corré el criterio de "candidato a archivar" (sección de arriba). Reusá el
-motor de relevancia del Step 4 de `daily-negatives-supabase` (mismo criterio), pero **invertido**: acá
-buscás los que HOY parecen Relevantes o protegidos, no los irrelevantes. Salida por negativo:
+**Pre-filtro (baja volumen y riesgo, OBLIGATORIO):** cargá `roots` + `competitors` del `relevance_profile`.
+Un negativo cuyo término matchea (igualdad/contención) un `root` o `competitor` **ya confirmado** es un buen
+negativo por definición → **`keep` directo, NO lo re-juzgues** (re-juzgarlo solo agrega riesgo de archivar
+algo bueno). Solo pasan al juicio del modelo los términos **NO explicados por el perfil** — que son
+justamente los juicios "propios" del modelo, la superficie real de falsos positivos. Excepción: si un
+término matchea `protected_relevant` → es `archive_candidate` de **alta confianza** directo (no debería estar
+negado).
+
+Por cada negativo que quede (los novedosos), corré el criterio de "candidato a archivar" (sección de arriba).
+Reusá el motor de relevancia del Step 4 de `daily-negatives-supabase` (mismo criterio), pero **invertido**:
+acá buscás los que HOY parecen Relevantes o protegidos, no los irrelevantes. Salida por negativo:
 `keep` (sigue siendo buen negativo) o `archive_candidate` con `{reason, confidence: high|med, suggested_action: archive|downgrade_to_exact}`.
 
 Armá `proposal = [{texto, match, kind, product/campaña, reason, confidence, action}]`, ordenada por

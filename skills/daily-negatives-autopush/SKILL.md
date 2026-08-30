@@ -243,6 +243,11 @@ automatización o revisar el destino sin tocar Amazon.
   completos. Así el dashboard muestra el plan del día sin haber aplicado nada. El conteo `created` sale del
   preview (contá los `skipped` de PT ad groups). Cuando pases a apply real, el mismo recibo se escribe sin
   el flag `mode`.
+  > **⚠️ Caveat del `created` en dry-run:** el conteo del preview es el producto cartesiano
+  > (keywords × match × ad groups) y **NO descuenta los negativos que ya existen** — la dedup contra los
+  > existentes recién ocurre en el apply. Así que en dry-run `created` **sobre-estima** lo que apply
+  > realmente crearía (el apply reporta muchos `skipped_existing`). Interpretá el número de dry-run como
+  > "techo / candidatos a crear", no como el neto final.
 
 ---
 
