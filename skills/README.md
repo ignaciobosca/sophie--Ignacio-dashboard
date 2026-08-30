@@ -47,6 +47,9 @@ todo (candidatos, pushes, revisiones), pero ya no tenés que seleccionar ni copi
   **NO se pushea** — queda para el dashboard/manual. Un destino vacío jamás significa "todas".
 - **ASINs nunca se auto-negativizan** (regla de Nacho): los términos `b0…` (`kind:"asin"`) no se pushean;
   van a `asins_skipped[]` y se muestran en el tab Push para decidir a mano. El autopush crea solo keyword-negatives.
+- **Caracteres especiales no se pueden negar** (regla de Nacho): un keyword con char fuera de `[A-Za-z0-9 '&-]`
+  (no-ASCII o coma/símbolos) Amazon lo rechaza → no se pushea, va a `dropped[]` con `reason:"special_char"`.
+  Aplica al autopush y al push manual (`adlabs-push-negatives`).
 - **Revisión semanal = propone, Nacho confirma.** Des-negar reabre gasto, así que no se archiva sin OK.
   El OK alimenta `protected_relevant` (learn) → el sistema deja de re-negar ese término.
 - **Loose Match por patrón:** las campañas se descubren por nombre que contiene `loose` **y**

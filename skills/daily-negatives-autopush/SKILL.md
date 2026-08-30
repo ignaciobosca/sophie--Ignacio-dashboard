@@ -59,6 +59,11 @@ crea + aplica los negativos vía el MCP de AdLabs, sin que toques el dashboard.
 10. **NUNCA auto-negativices ASINs (pedido de Nacho).** Cualquier candidato `kind=="asin"` (término que
    matchea `^b0[a-z0-9]{8}$`) NO se pushea — va a `asins_skipped[]` para que Nacho lo revise a mano en el
    informe. El autopush crea **solo** keyword-negatives (phrase/exact), nunca negative product targets.
+11. **Términos con caracteres especiales NO se pueden negar (pedido de Nacho).** Si un keyword contiene
+   cualquier carácter fuera del set seguro `[A-Za-z0-9 '&-]` (o sea: **cualquier char no-ASCII** — acentos,
+   `ą`, `ł`, `ñ`, emojis… — **o** símbolos como coma, `/`, `+`, `%`, `"`), Amazon lo rechaza → **NO se pushea.**
+   Sumalo a `dropped[]` con `reason:"special_char"` para que quede registrado. Ej.: `kofeiną, kopexilem`
+   (coma + `ą`) → no negable. (Hyphen `-`, apóstrofo `'` y `&` sí se permiten: son comunes en keywords reales.)
 
 ---
 
@@ -138,13 +143,16 @@ Recorré `candidates` y clasificá cada uno **en este orden** (el primero que ap
    `^b0[a-z0-9]{8}$`) → **NO pushear.** Sumalo a `asins_skipped[]` con TODO el contexto (`term`, `clicks`,
    `spend`, `product`, `origin_campaign`, `origin_ad_group`, `reason`) para que Nacho lo vea en el informe y
    decida a mano. **El autopush pushea SOLO keywords.**
-4. **Retención por producto no resoluble (regla 1)** — ya solo keywords: si `product == "General (sin
+4. **Caracteres especiales NO negables (regla 11)** — ya solo keywords: si el término tiene algún char fuera
+   de `[A-Za-z0-9 '&-]` (no-ASCII o símbolos como coma/`/`/`+`/`%`/`"`) → **NO pushear.** Sumalo a `dropped[]`
+   con `reason:"special_char"`. Chequealo ANTES de agrupar/validar límites.
+5. **Retención por producto no resoluble (regla 1)** — keywords limpias: si `product == "General (sin
    asignar)"` o la línea no está en `line_asins` → **retener** (no pushear). Sumalo a `held[]` con TODO el
    contexto para que Nacho decida: `term`, `clicks`, `spend`, `match`, `kind`, `origin_campaign`,
    `origin_ad_group`, `reason`, y una **`suggested_line`** (best-effort): matcheá `origin_campaign`/
    `origin_ad_group` contra los nombres de línea de `line_asins`; si no hay match claro → `suggested_line: null`.
    NUNCA pushees por la sugerencia — es solo para el informe.
-5. **Idempotencia:** si `(term, match)` ∈ `already_pushed` → saltear (ya aplicado hoy).
+6. **Idempotencia:** si `(term, match)` ∈ `already_pushed` → saltear (ya aplicado hoy).
 Los keywords que sobreviven se agrupan por **línea de producto** (`product`) → `push_groups[linea] = {keywords_phrase[], keywords_exact[]}` (**sin ASINs** — nunca).
 
 ### Step 5 — Resolver destino por línea + crear previews (reusa adlabs-push-negatives Paso 3–5)
@@ -162,7 +170,12 @@ get_entity_data(entity_type="ad_group", team_id, profile_id, chat_session_id,
 4. **Reference vacía (0 ad groups ENABLED que anuncian la línea):** NO pushees. Sumá la línea a `held_no_dest[]`
    con motivo "sin ad groups ENABLED que anuncien esta línea". (Nunca apliques sobre reference vacía.)
 5. **Validar términos** (límites Amazon): ≤80 chars; PHRASE ≤4 palabras; EXACT ≤10 palabras. El que viole se
-   saltea en el apply (avisalo). Deduplicá.
+   saltea (sumalo a `dropped[]` `reason:"limit_violation"`). Los de caracteres especiales ya se sacaron en
+   Step 4 (regla 11). Deduplicá.
+   > **Nota (visto en el dry-run de Masofta):** algunos ad groups del set CONTAINS_ASINS son de **product
+   > targeting** (no keyword). AdLabs **saltea solo** los keyword-negatives ahí ("ad group targets products")
+   > y lo reporta en el preview/apply. No es error: por eso los negativos efectivos pueden ser < keywords ×
+   > ad groups. Contá los `skipped` del recibo del preview.
 6. **Crear previews** (solo keywords — los ASINs NO se pushean, regla 10):
    - keywords phrase → `create_entities(negative_targeting, reference=<ref>, keywords=[...phrase...], match_types=["AD_GROUP_NEGATIVE_PHRASE"])`
    - keywords exact → `create_entities(negative_targeting, reference=<ref>, keywords=[...exact...], match_types=["AD_GROUP_NEGATIVE_EXACT"])`
@@ -203,7 +216,7 @@ Construí `datos` schema `negatives-push-v1` y upserteá:
            "origin_campaign":"...","origin_ad_group":"...","suggested_line":"<linea>|null"}],
   "asins_skipped":[{"term":"b0xxxxxxxx","clicks":N,"spend":F,"kind":"asin","product":"<linea|General>",
                     "origin_campaign":"...","origin_ad_group":"...","reason":"ASIN - no auto-negado (regla de Nacho)"}],
-  "dropped":[{"term":"...","reason":"own_brand | protected_relevant | limit_violation"}] }
+  "dropped":[{"term":"...","reason":"own_brand | protected_relevant | special_char | limit_violation"}] }
 ```
 `held_spend`/`asins_spend` = suma de `spend` de retenidos / de ASINs skippeados (para priorizar). `applied`/`held`
 son **solo keywords** (`kind:"keyword"`); los ASINs viven en `asins_skipped[]`. El informe diario del Master
@@ -249,6 +262,8 @@ destino que derivó el skill sin tocar Amazon. No escribe recibo (o lo escribe c
 | Campaña Scavenger en el destino | Excluida (regla 6). Reportar cuántas. |
 | Término/ASIN de marca propia o managed_asins | Descartar (red regla 8). Reportado en `dropped`. |
 | Término en protected_relevant | Descartar (red final). Reportado en `dropped`. |
+| Keyword con caracteres especiales (no-ASCII/coma/símbolos) | NO negable (regla 11). `dropped` con `reason:"special_char"`. |
+| Ad group de product targeting en el set CONTAINS_ASINS | AdLabs saltea solo el keyword-negative ahí ("ad group targets products"). Contar los `skipped` del preview. |
 | Re-run el mismo día | Idempotente: saltea `(term,match)` ya en el recibo; mergea lo nuevo. |
 | Keyword viola límites (80/4/10) | Se saltea en el apply. Avisar cuál. |
 | AdLabs reference expiró | Re-fetcheá el ad_group (las references expiran con la sesión). |
