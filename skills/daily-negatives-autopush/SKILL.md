@@ -121,9 +121,15 @@ Si existe, armá `already_pushed` = set de `(term, match)` ya aplicados (de `dat
 Si no existe, `already_pushed = {}`.
 
 ### Step 4 — Preparar candidatos + red de seguridad
-Recorré `candidates` del snapshot. Por cada uno:
+Cada candidato del snapshot trae `{term, clicks, spend, match, root, reason, kind, product, origin_campaign, origin_ad_group}`
+(los dos `origin_*` los persiste `daily-negatives-supabase` Step 5; si un snapshot viejo no los trae, quedan `""`).
+Recorré `candidates`. Por cada uno:
 1. **Retención por producto no resoluble (regla 1):** si `product == "General (sin asignar)"` o la línea no
-   está en `line_asins` → **retener** (no pushear). Sumalo a `held[]` con motivo.
+   está en `line_asins` → **retener** (no pushear). Sumalo a `held[]` con TODO el contexto para que Nacho
+   decida: `term`, `clicks`, `spend`, `match`, `kind`, `origin_campaign`, `origin_ad_group`, `reason`, y una
+   **`suggested_line`** (best-effort): matcheá `origin_campaign`/`origin_ad_group` contra los nombres de línea de
+   `line_asins` (substring/semántico); si no hay match claro → `suggested_line: null`. NUNCA pushees por la
+   sugerencia — es solo para que Nacho la vea en el informe y decida.
 2. **Red de marca propia (regla 8):** si `kind=="asin"` y el ASIN ∈ `own_asins` → descartar (self-targeting).
    Si `kind=="keyword"` y el término es claramente marca propia → descartar. Sumar a `dropped_own[]`.
 3. **Red de protected_relevant (regla — última palabra):** cargá `protected_relevant` del perfil
@@ -177,13 +183,19 @@ create_entities(entity_type="negative_targeting_apply", team_id, profile_id, cha
 Construí `datos` schema `negatives-push-v1` y upserteá:
 ```json
 { "schema":"negatives-push-v1", "generated_at_iso":"<ISO ART>",
-  "brand":"<brand_name>", "date_iso":"<HOY-ART>", "data_window":"<ayer, del snapshot>",
-  "summary":{"applied_terms":N,"created":N,"skipped_existing":N,"held":N,"ad_groups_touched":N,"lines":N},
-  "applied":[{"term":"...","match":"phrase|exact|product_target","kind":"keyword|asin","line":"...",
-              "ad_groups":N,"created":N,"skipped":N,"preview_id":"...","note":"..."}],
-  "held":[{"term":"...","match":"...","kind":"...","product":"...","reason":"General (sin asignar) | sin ad groups ENABLED | ..."}],
+  "brand":"<brand_name>", "marketplace":"US", "currency_prefix":"$",
+  "date_iso":"<HOY-ART>", "data_window":"<ayer, del snapshot>",
+  "summary":{"applied_terms":N,"created":N,"skipped_existing":N,"held":N,"dropped":N,
+             "held_spend":F,"ad_groups_touched":N,"lines":N},
+  "applied":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact|product_target","kind":"keyword|asin",
+              "line":"...","ad_groups":N,"created":N,"skipped":N,"preview_id":"..."}],
+  "held":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact","kind":"keyword|asin",
+           "product":"General (sin asignar)","reason":"General (sin asignar) | sin ad groups ENABLED | ...",
+           "origin_campaign":"...","origin_ad_group":"...","suggested_line":"<linea>|null"}],
   "dropped":[{"term":"...","reason":"own_brand | protected_relevant | limit_violation"}] }
 ```
+`held_spend` = suma de `spend` de los retenidos (para priorizar cuáles resolver primero). El informe diario del
+Master Dashboard (tab **Push**) lee estas filas — ver `skills/push-report/` para el composer y el template.
 ```sql
 insert into public.dashboard_snapshots (cliente, tipo, fecha, datos)
 values ('<brand_name>', 'negatives_push', '<HOY-ART>', $push$<datos>$push$::jsonb)

@@ -67,6 +67,26 @@ Antes de agendar las Routines, correr **una vez en modo `dry-run` / con OK manua
 
 Correr primero con un cliente de prueba (ej. Natchiketa o Masofta) en `dry-run` antes de full-auto.
 
+## Informe diario del autopush → Tab "Push" del Master Dashboard
+
+Además del push automático, el autopush deja un **recibo diario por cliente** en Supabase
+(`dashboard_snapshots`, tipo `negatives_push`) con lo que se pusheó (`applied`), lo **retenido** por
+`General (sin asignar)` (`held`, con clicks/spend/campaña de origen/línea sugerida) y lo descartado
+por la red de seguridad (`dropped`). Eso se muestra como una **5ta tab "Push"** en el Master Dashboard
+de siempre, con selector de día y la lista de retenidos accionable para que decidas la línea.
+
+Carpeta `push-report/`:
+- `push-tab.js` — la función `renderPush()` + los puntos de inserción del template.
+- `PATCH.md` — las 3 piezas de datos (autopush · snapshot · composer) + cómo aplicar el tab al template
+  en Supabase, con el código exacto en el apéndice.
+
+**Skills existentes patcheados** (cambios aditivos, documentados en `push-report/PATCH.md`):
+- `daily-negatives-supabase` — persiste `origin_campaign`/`origin_ad_group` en cada candidato.
+- `master-dashboard-supabase` — lee `negatives_push` y arma `DATA.push` (5ta tab).
+
+El único paso que falta y necesita Supabase conectado: aplicar el `renderPush()` al `template_html`
+(id='master'). Decime "aplicá el tab Push al template del master dashboard" cuando quieras.
+
 ## Instalación
 Cada carpeta (`daily-negatives-autopush/`, `weekly-negatives-review/`) es un skill con su `SKILL.md`.
 Instalar en la librería de skills (mismo mecanismo que los demás skills del pod). Los `.skill`
