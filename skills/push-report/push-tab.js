@@ -1,13 +1,13 @@
 /* =============================================================================
-   Master Dashboard — TAB "Push" (informe diario del autopush)
+   Master Dashboard - TAB "Push" (informe diario del autopush)
    -----------------------------------------------------------------------------
    Este bloque se agrega al TEMPLATE del Master Dashboard (Supabase:
    dashboards.template_html, id='master'), dentro del <script>. Reusa las mismas
-   clases CSS y helpers ($ , el, money, escapeHtml) que las otras tabs — no hace
+   clases CSS y helpers ($ , el, money, escapeHtml) que las otras tabs - no hace
    falta CSS nuevo. Consume DATA.push que arma el composer master-dashboard-supabase.
 
-   Ver PATCH.md para los 5 puntos de inserción (DOM, TABS[], allClients,
-   clientSel.onchange, boot) además de esta función.
+   Ver PATCH.md para los 5 puntos de insercion (DOM, TABS[], allClients,
+   clientSel.onchange, boot) ademas de esta funcion.
    ============================================================================= */
 
 function renderPush(){
@@ -26,7 +26,7 @@ function renderPush(){
     const days=(c.days||[]).slice();               // nuevo -> viejo
     const panel=el('div','client');
 
-    // ── header ────────────────────────────────────────────────
+    // -- header ------------------------------------------------
     const head=el('div','head');
     head.innerHTML=`<div><div class="name">${escapeHtml(c.brand_name)}<span class="mkt">${c.marketplace||''}</span></div>
       <div class="prod">Autopush diario - negativos aplicados y retenidos</div></div>
@@ -37,7 +37,7 @@ function renderPush(){
       </div>`;
     panel.appendChild(head);
 
-    // ── selector de dia ───────────────────────────────────────
+    // -- selector de dia ---------------------------------------
     const bar=el('div','daybar');
     const dopts=days.map((d,di)=>`<option value="${di}">${d.date_iso||('dia '+(di+1))}${di===0?' (hoy)':''}</option>`).join('');
     bar.innerHTML=`<span class="lbl">Dia</span><select class="daysel" id="pu-day-${ci}">${dopts}</select>
@@ -76,7 +76,7 @@ function renderPush(){
         t.appendChild(tb); tw.appendChild(t); body.appendChild(tw);
       } else body.appendChild(el('div','empty','Nada pusheado este dia.'));
 
-      // --- RETENIDOS (General) — accionable ---
+      // --- RETENIDOS (General) - accionable ---
       const h2=el('div'); h2.style.cssText='font-weight:600;margin:16px 0 4px;color:var(--amber)';
       h2.innerHTML=`Retenidos - decidir producto (${held.length})`;
       body.appendChild(h2);
@@ -98,11 +98,11 @@ function renderPush(){
         const hint=el('div','note'); hint.style.marginTop='8px';
         hint.innerHTML='Para aplicar un retenido: asigna la linea en el onboarding/config del producto (o deci en un '+
           'chat: <b>"asigna estos terminos a la linea X en '+escapeHtml(c.brand_name)+' y pushealos"</b>) y corre '+
-          'el autopush de nuevo — ya con producto resoluble los aplica.';
+          'el autopush de nuevo - ya con producto resoluble los aplica.';
         body.appendChild(hint);
       } else body.appendChild(el('div','empty','Sin retenidos este dia. Todo se pudo asignar y pushear.'));
 
-      // --- DESCARTADOS (red de seguridad) — resumen ---
+      // --- DESCARTADOS (red de seguridad) - resumen ---
       if(dropped.length){
         const h3=el('div'); h3.style.cssText='font-weight:600;margin:16px 0 4px;color:var(--dim)';
         h3.innerHTML=`Descartados por red de seguridad (${dropped.length})`;

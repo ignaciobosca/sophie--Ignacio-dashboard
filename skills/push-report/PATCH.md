@@ -11,10 +11,13 @@ Nacho pidió un informe diario de lo que el autopush **pusheó** y lo que **retu
 | 1 | El autopush deja un recibo rico por día | `daily-negatives-autopush` (Step 7, schema `negatives-push-v1`) | ✅ hecho |
 | 2 | El snapshot persiste la campaña/ad-group de origen | `daily-negatives-supabase` (Step 5, candidato + `origin_campaign`/`origin_ad_group`) | ✅ hecho |
 | 3 | El composer arma `DATA.push` desde `negatives_push` | `master-dashboard-supabase` (Step 1a query + Step 2 compose) | ✅ hecho |
-| 4 | El template renderiza el tab | `dashboards.template_html` (id='master') en Supabase | ⏳ aplicar (abajo) |
+| 4 | El template renderiza el tab | `dashboards.template_html` (id='master') en Supabase | ✅ APLICADO (2026-08-30) |
 
-Los cambios 1–3 ya están en los `SKILL.md`. El cambio 4 (template) hay que aplicarlo **una vez** al
-`template_html` en Supabase — no se puede hacer sin el conector Supabase conectado.
+Los 4 cambios están hechos. El cambio 4 (template) se aplicó a `dashboards.template_html` (id='master') en
+Supabase el 2026-08-30, validado con `node --check` + render en Chromium, y verificado por MD5 idéntico
+(`d0a5fb718c357a38163db9ea009361bc`) entre la versión local validada y la fila `master`. La próxima corrida
+del composer (`master-dashboard-supabase`) publica el dashboard con el tab Push. Hasta que corra el autopush,
+el tab muestra "sin datos" (correcto). El código sigue abajo por si hay que re-aplicarlo tras un cambio de template.
 
 ## Flujo de datos
 

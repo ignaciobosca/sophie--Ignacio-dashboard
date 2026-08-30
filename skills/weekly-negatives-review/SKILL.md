@@ -85,39 +85,44 @@ Armá:
 - `protected_relevant` del perfil: `select profile->'protected_relevant' from public.relevance_profiles where brand='<brand_name>'`.
 
 ### Step 2 — Descubrir las campañas Loose Match - High Likelihood (por patrón, y CHEQUEAR)
-No asumas un nombre fijo. Fetcheá campañas y quedate con las que **contienen `loose` Y `high likelihood`**:
+No asumas un nombre fijo. Fetcheá campañas con `CAMPAIGN_NAME LIKE "Loose"` (pre-corte) y quedate con las
+que **contienen `loose` Y `high likelihood`** (el AND lo confirmás en el modelo — AdLabs matchea substring):
 ```
 get_entity_data(entity_type="campaign", team_id, profile_id, chat_session_id,
-  filters=[ CAMPAIGN_STATE=ENABLED, DATE=<últimos 14 días>,
+  filters=[ {"key":"DATE","conditions":[{"operator":">=","values":["<hoy-14>"]},{"operator":"<=","values":["<hoy>"]}],"logical_operator":"AND"},
+            {"key":"CAMPAIGN_STATE","conditions":[{"operator":"=","values":["ENABLED"]}]},
             {"key":"CAMPAIGN_NAME","conditions":[{"operator":"LIKE","values":["Loose"]}]} ])
 ```
-`read` la reference y **filtrá en el modelo** las filas cuyo nombre (lower) contenga `loose` **y**
-`high likelihood` (el filtro LIKE de arriba es un pre-corte; el AND de las dos palabras lo confirmás vos,
-porque AdLabs matchea por substring simple). Guardá `loose_campaigns = [{campaign_id, campaign_name}]`.
+`read` la reference (columnas útiles: `campaign_id`, `campaign_name`) y filtrá `lower(name)` que contenga
+`loose` **y** `high likelihood`. Guardá `loose_campaigns = [{campaign_id, campaign_name}]`.
+> **Confirmado en vivo (Urban Veda / Ayurveda Wellness, 2026-08-30):** hay **una loose-match por ASIN** y
+> **el ASIN va en el nombre** de la campaña, ej.
+> `SO | Exfoliating Facial Polish | B00KEOC2QM | SPA | Loose - Comps | High Likelihood`. Así que:
+> **mapeá cada loose-campaign a su producto/línea parseando el `B0[A-Z0-9]{8}` del nombre → `line_of_asin`.**
+> Fallback si el nombre no trae ASIN: `advertised_product` con `CAMPAIGN_ID IN <esa campaña>` → ASIN → línea.
 
 - **CHEQUEO OBLIGATORIO (pedido de Nacho):** imprimí las campañas que encontró antes de seguir, p.ej.
-  `Encontré 6 campañas Loose Match - High Likelihood en {brand}: [nombres].` Así ves si el patrón
-  capturó lo correcto por cuenta (los nombres varían: "loose"/"loose match", pero siempre "loose" + "high likelihood").
-- **Si 0 campañas:** avisá y ofrecé fallback: leer los negativos a **nivel cuenta** (todas las campañas
-  ENABLED). No inventes campañas. Preguntá si querés el fallback o si el nombre es otro.
-- Mapeá cada loose-campaign a su **producto/línea** por los ASINs que anuncia (fetch `advertised_product`
-  con `CAMPAIGN_ID IN <esa campaña>` → ASIN → `line_of_asin`) o por el nombre de la campaña.
+  `Encontré 3 campañas Loose Match - High Likelihood en {brand}: [nombres].` Así ves si el patrón capturó
+  lo correcto (los nombres varían: "Loose - Comps" / "Loose - Close", pero siempre "loose" + "high likelihood").
+- **Si 0 campañas:** avisá y ofrecé fallback: leer los negativos a **nivel cuenta**. No inventes campañas.
 
 ### Step 3 — Leer los negativos aplicados en esas campañas
+> **Entidad confirmada:** `negative_targeting` (schema `adlabs://schema/filters/negative_targeting`).
 Traé los negativos (keyword + product target) que viven en las `loose_campaigns`:
 ```
-get_entity_data(entity_type="negative_keyword", team_id, profile_id, chat_session_id,
-  filters=[ {"key":"CAMPAIGN_ID","conditions":[{"operator":"IN","values":<ref/ids de loose_campaigns>]}]},
-            CAMPAIGN_STATE=ENABLED ])
+get_entity_data(entity_type="negative_targeting", team_id, profile_id, chat_session_id,
+  filters=[ {"key":"CAMPAIGN_ID","conditions":[{"operator":"IN","values":["<id1>","<id2>",...]}]},
+            {"key":"NEGATIVE_TARGET_STATE","conditions":[{"operator":"=","values":["ENABLED"]}]} ])
 ```
-> ⚠️ **Verificar la entidad al construir:** el nombre exacto de la entidad de negativos en AdLabs
-> (`negative_keyword` / `negative_target` / `negative_targeting`) y sus columnas (`match_type`,
-> `ad_group_id`, `state`, `keyword_text`/`expression`) hay que confirmarlos con
-> `read_resource(uri="adlabs://instructions")` o el schema en la primera corrida real. Traé para cada
-> negativo: `texto/expresión`, `match_type` (phrase/exact/product_target), `ad_group_id`, `campaign_id`,
-> `state`, y un `id` para poder archivarlo en el Step 5. Para volumen alto, `download_data` a CSV.
+Filtros útiles del schema: `TARGET_TYPE` (KEYWORD|PRODUCT_TARGET), `NEGATIVE_KEYWORD_MATCH_TYPE`
+(NEGATIVE_EXACT|NEGATIVE_PHRASE|NEGATIVE_BROAD), `NEGATIVE_TARGETING_LEVEL` (CAMPAIGN|AD_GROUP),
+`NEGATIVE_TARGETING` (texto, LIKE), `CREATED_AT`. La reference row-level trae por negativo: `id`,
+`match_type_raw`, `campaign_id` (columnas que exige el archivado del Step 5) + el texto/expresión, nivel y
+ad group. Para volumen alto, `download_data` a CSV. **Guardá la reference** — la reusás para archivar.
+> Nota: los negativos **ARCHIVED se excluyen server-side** (no se pueden traer). Solo ves ENABLED/PAUSED,
+> que es justo lo que querés revisar.
 
-Dedup por `(texto, match_type)` conservando en qué campañas/ad groups vive (se necesita para archivar).
+Dedup por `(texto, match_type)` conservando `id`/`campaign_id`/`match_type_raw` (se necesitan para archivar).
 
 ### Step 4 — Re-juzgar cada negativo + armar la propuesta
 Por cada negativo aplicado, corré el criterio de "candidato a archivar" (sección de arriba). Reusá el
@@ -138,14 +143,18 @@ confianza desc. Si `proposal` está vacía → todo sano, reportá y saltá al S
    > ¿Archivo estos {N}? Podés decir "todos", "solo los de alta confianza", o listarme cuáles.
 2. **Esperá el OK de Nacho.** Sin confirmación explícita **no se archiva nada.** ("todos" / "solo alta" /
    una sublista son confirmaciones válidas.)
-3. **Al confirmar, archivá** los seleccionados en AdLabs. Mecánica (verificar en la 1ª corrida):
+3. **Al confirmar, archivá** los seleccionados en AdLabs. **Mecánica confirmada** (`adlabs://docs/actions/negative_targeting`):
+   necesitás una reference row-level SOLO con los negativos a archivar (con columnas `id`,`match_type_raw`,`campaign_id`).
+   Armala re-fetcheando `negative_targeting` filtrado por `NEGATIVE_TARGET_ID IN [<ids seleccionados>]` (reference fresca), y:
    ```
-   update_entities(entity_type="negative_keyword", team_id, profile_id, chat_session_id,
-     reference/ids=<los negativos seleccionados>, updates={"state":"ARCHIVED"})
+   update_entities(entity_type="negative_targeting", team_id, profile_id, chat_session_id,
+     action="update_status", status="ARCHIVED", reference=<ref de los seleccionados>,
+     note="Weekly review: archivar negativos que bloquean tráfico relevante en {brand} — confirmado por Nacho, <fecha>")
    ```
-   > Si AdLabs no expone archivar negativos vía `update_entities`, la alternativa es PAUSE del negativo o
-   > darle a Nacho el link "View in AdLabs" de esos negativos para archivarlos en la UI (equivale a un
-   > dry-run con acción manual). Confirmá el mecanismo real al construir y dejá registrado cuál se usa.
+   > ⚠️ **ARCHIVED es IRREVERSIBLE** (AdLabs no permite des-archivar). Si un negativo se archiva de más, la
+   > única forma de recuperarlo es **re-crearlo** (via `daily-negatives-autopush` / `adlabs-push-negatives`).
+   > Por eso este paso NUNCA corre sin el OK explícito de Nacho, y solo sobre los `id` que él confirmó.
+   > `status` solo acepta `"ARCHIVED"`. Si Nacho prefiere no archivar todavía, dale el link "View in AdLabs".
 4. **Learn (enseñar al sistema):** por cada negativo archivado, agregalo a `protected_relevant` del perfil
    para que `daily-negatives-autopush` no lo vuelva a negar. Reusá `daily-negatives-supabase` MODE=learn
    (upsert a `public.relevance_profiles`, con chequeo de conflicto: si el término está en roots/competitors,
@@ -187,7 +196,6 @@ Confirmá: `Revisión semanal {brand}: {reviewed} negativos revisados en {C} cam
 | Patrón captura campañas de más (falsos loose) | El CHEQUEO del Step 2 lo muestra; Nacho ajusta el patrón o excluye. |
 | Propuesta vacía (todo sano) | Snapshot "sin cambios", nada que archivar. Reportar limpio. |
 | Sin OK de Nacho | NO archivar. Guardar propuesta `status:"pending"` para confirmar después. |
-| AdLabs no permite archivar vía MCP | Fallback: pause, o link "View in AdLabs" para archivar en la UI. Registrar el mecanismo usado. |
+| Archivado es irreversible | Solo sobre los `id` confirmados por Nacho. Recuperar = re-crear vía autopush/push. |
 | Negativo archivado | Agregar a protected_relevant (learn) para que el autopush no lo re-negue. |
-| Entidad/columnas de negativos inciertas | Confirmar con adlabs://instructions o el schema en la 1ª corrida. |
 | Multi-marketplace | 1 corrida por config; brand distingue US/CA. |

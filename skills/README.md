@@ -50,22 +50,22 @@ todo (candidatos, pushes, revisiones), pero ya no tenés que seleccionar ni copi
 - **Loose Match por patrón:** las campañas se descubren por nombre que contiene `loose` **y**
   `high likelihood` (case-insensitive). Hay **una por ASIN/producto** (ej. Urban Veda).
 
-## ⚠️ Verificaciones en vivo pendientes (hacer en la 1ª corrida real, con AdLabs conectado)
+## Verificaciones en vivo (2026-08-30, AdLabs + Supabase conectados)
 
-Estos skills se escribieron con AdLabs/Supabase desconectados (piden auth en sesión interactiva).
-Antes de agendar las Routines, correr **una vez en modo `dry-run` / con OK manual** y confirmar:
+✅ **Ya verificado:**
+1. **Entidad de negativos para leerlos** — es `negative_targeting` (schema `adlabs://schema/filters/negative_targeting`).
+   Filtros: `CAMPAIGN_ID`, `NEGATIVE_TARGET_STATE`, `TARGET_TYPE`, `NEGATIVE_KEYWORD_MATCH_TYPE`,
+   `NEGATIVE_TARGETING_LEVEL`, `NEGATIVE_TARGET_ID`. Row-level trae `id`, `match_type_raw`, `campaign_id`.
+2. **Archivar un negativo** — `update_entities(entity_type="negative_targeting", action="update_status",
+   status="ARCHIVED", reference, note)`. **Irreversible** (no se des-archiva; recuperar = re-crear).
+3. **Patrón Loose Match** — `CAMPAIGN_NAME LIKE "Loose"` funciona; confirmado en Urban Veda (cuenta
+   "Ayurveda Wellness"): 3 campañas, una por ASIN, con el ASIN en el nombre y "Loose … High Likelihood".
 
-1. **Entidad de negativos en AdLabs para leerlos** (Step 3 del weekly): nombre exacto
-   (`negative_keyword` / `negative_target`) y columnas (`match_type`, `ad_group_id`, `state`, texto/expresión, `id`).
-   Confirmar con `read_resource(uri="adlabs://instructions")` o el schema.
-2. **Mecanismo de archivar un negativo** (Step 5 del weekly): si `update_entities` acepta
-   `state=ARCHIVED` para negativos, o si hay que usar pause / la UI. Dejar registrado cuál se usa.
-3. **`CONTAINS_ASINS` + exclusión Scavenger** (Step 5 del autopush): confirmar que la reference de
-   ad_group resuelve como se espera y que el filtro `CAMPAIGN_NAME_NOT NOT_LIKE "Scavenger"` corta bien.
-4. **Filtro `CAMPAIGN_NAME LIKE "Loose"`** (Step 2 del weekly): confirmar que trae las campañas y
-   validar el AND de las dos palabras en el modelo (AdLabs matchea substring simple).
+⏳ **Falta verificar (en la 1ª corrida del autopush, en `dry-run`):**
+- **`CONTAINS_ASINS` + exclusión Scavenger** (autopush Step 5): que la reference de ad_group resuelva bien
+  y que `CAMPAIGN_NAME_NOT NOT_LIKE "Scavenger"` corte como se espera.
 
-Correr primero con un cliente de prueba (ej. Natchiketa o Masofta) en `dry-run` antes de full-auto.
+Correr el autopush en `dry-run` con un cliente antes de agendar las Routines en full-auto.
 
 ## Informe diario del autopush → Tab "Push" del Master Dashboard
 
@@ -84,8 +84,8 @@ Carpeta `push-report/`:
 - `daily-negatives-supabase` — persiste `origin_campaign`/`origin_ad_group` en cada candidato.
 - `master-dashboard-supabase` — lee `negatives_push` y arma `DATA.push` (5ta tab).
 
-El único paso que falta y necesita Supabase conectado: aplicar el `renderPush()` al `template_html`
-(id='master'). Decime "aplicá el tab Push al template del master dashboard" cuando quieras.
+**Estado (2026-08-30):** el tab Push YA está aplicado al `template_html` (id='master') en Supabase,
+validado con `node --check` + Chromium y verificado por MD5. La próxima corrida del composer lo publica.
 
 ## Instalación
 Cada carpeta (`daily-negatives-autopush/`, `weekly-negatives-review/`) es un skill con su `SKILL.md`.
