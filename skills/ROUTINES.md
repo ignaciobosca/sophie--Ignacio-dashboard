@@ -19,12 +19,15 @@ en el dashboard de esa mañana.
 
 ---
 
-## 1) Autopush diario — en batches de 5 clientes (RECOMENDADO)
+## 1) Autopush diario — en batches de 5 por OFFSET (RECOMENDADO)
 
-**Layout recomendado:** **una Routine por cada grupo de 5 clientes**, escalonadas +5 min (igual que tu
-"Daily Negatives"). La **cantidad de batches = ceil(clientes_activos / 5)**: hoy son **20 activos → 4
-batches**; si pasás a 25 → 5 batches, a 30 → 6, etc. Cuando agregás/sacás clientes, ajustás los grupos
-(y agregás/quitás una Routine si cruzás un múltiplo de 5).
+**Layout recomendado (igual que tu "Daily Negatives"):** **una Routine por offset**, cada una procesa 5
+clientes, escalonadas +5 min. **El prompt es el MISMO en todas** — solo cambia el número de `OFFSET` (0, 5,
+10, 15, …). No se nombran marcas: cada Routine toma sus 5 clientes con
+`... order by brand limit 5 offset OFFSET`, así que **agregar/sacar clientes no obliga a editar prompts**.
+
+La **cantidad de Routines = ceil(clientes_activos / 5)**: hoy **20 activos → 4 Routines** (offsets 0/5/10/15).
+Si pasás a 25 → 5 (agregás offset 20), a 30 → 6, etc.
 
 **Por qué batches y no una sola:**
 - **Resiliencia:** si un batch falla (AdLabs tira error, una reference expira), los demás siguen.
@@ -32,61 +35,54 @@ batches**; si pasás a 25 → 5 batches, a 30 → 6, etc. Cuando agregás/sacás
 - **Reparte la carga de AdLabs** y mantiene cada sesión corta.
 - **Idempotente:** el recibo del día evita duplicados, así que re-correr un batch es seguro.
 
-**Config (todas):**
-- **Cron:** uno por batch, arrancando **10:30 UTC (07:30 ART)** y **+5 min por batch**: `30 10 * * *`,
-  `35 10 * * *`, `40 10 * * *`, `45 10 * * *`, `50 10 * * *`, … (sumá los que necesites según cuántos batches tengas).
-- **Entorno:** Daily Check · **sesión nueva por corrida** · **sin repo**
-- **Connectors:** **Supabase + Adlabs**
-- **Notificaciones:** push/email a gusto.
-- Partí los clientes activos en grupos de 5 (a las 07:30 ya están **todos** los snapshots escritos, así que el grupo no tiene que coincidir con el del identificador).
+**Config (todas):** Entorno **Daily Check** · **sesión nueva por corrida** · **sin repo** · Connectors **Supabase + Adlabs** · notificaciones a gusto.
 
-**Split actual — hoy (20 marcas activas, alfabético → 4 batches).** Es una foto de hoy; recalculalo cuando cambie la lista de clientes:
+**Una Routine por offset** (arrancando 10:30 UTC / 07:30 ART, +5 min por offset):
 
-| Batch | Cron (UTC) | Hora ART | Marcas |
+| Routine | Cron (UTC) | Hora ART | OFFSET |
 |---|---|---|---|
-| 1 | `30 10 * * *` | 07:30 | Ayurveda Wellness · BloomTrail · Chill Rover · Dr. Cohen's Acuball · DynamoMe |
-| 2 | `35 10 * * *` | 07:35 | Every Cloud · Farm Made Organics · Happy Fox · Happy Fox (CA) · Hekaya |
-| 3 | `40 10 * * *` | 07:40 | House of Thalen · Leefy Organics · Masofta Inc · Moomade · Natchiketa |
-| 4 | `45 10 * * *` | 07:45 | Pavida's · Poop Juice · Second Kind · Zola Zola · ZzzPedic |
+| Autopush - Offset 0  | `30 10 * * *` | 07:30 | 0 |
+| Autopush - Offset 5  | `35 10 * * *` | 07:35 | 5 |
+| Autopush - Offset 10 | `40 10 * * *` | 07:40 | 10 |
+| Autopush - Offset 15 | `45 10 * * *` | 07:45 | 15 |
+| (si hay 25+ clientes) Offset 20 | `50 10 * * *` | 07:50 | 20 |
 
-> **Tip:** para recalcular el split cuando cambien los clientes, corré en Supabase:
-> `select brand from public.clients where active = true order by brand;` y armá grupos de 5 en ese orden.
-
-### Prompt por batch — DRY-RUN (recomendado para estrenar)
-Escribe el recibo (el tab Push muestra lo que HARÍA) pero **no aplica nada** a Amazon. Reemplazá
-`<CLIENTE 1..5>` por los 5 nombres de marca del batch, tal como figuran en Supabase (ej. `Masofta Inc`):
+### Prompt — DRY-RUN (recomendado para estrenar)
+**El mismo prompt en cada Routine; cambiá solo el número de `OFFSET`.** Escribe el recibo (el tab Push
+muestra lo que HARÍA) pero **no aplica nada** a Amazon:
 ```
-Corré el skill daily-negatives-autopush en modo DRY-RUN para estas 5 marcas:
-<CLIENTE 1>, <CLIENTE 2>, <CLIENTE 3>, <CLIENTE 4>, <CLIENTE 5>.
-Para cada una:
-- Leé el snapshot de negatives de HOY (tipo='negatives', fecha = hoy ART). Si no hay, saltala.
-- Clasificá: ASINs (kind='asin') -> asins_skipped (NO se pushean); keywords con caracteres especiales
+En Supabase (proyecto POD 66 "awhiobrcgghyiycxukjm"), tomá los 5 clientes que devuelva:
+  select brand from public.clients where active = true order by brand limit 5 offset OFFSET
+Corré el skill daily-negatives-autopush en modo DRY-RUN para cada uno de esos 5 clientes:
+- Lee el snapshot de negatives de HOY (tipo='negatives', fecha = hoy ART). Si no hay, saltalo.
+- Clasifica: ASINs (kind='asin') -> asins_skipped (NO se pushean); keywords con caracteres especiales
   (fuera de [A-Za-z0-9 '&-]) -> dropped(special_char); 'General (sin asignar)' -> held; el resto por linea.
-- Derivá el destino por linea con ad_group CONTAINS_ASINS (SP+SB, CAMPAIGN_STATE=ENABLED,
+- Deriva el destino por linea con ad_group CONTAINS_ASINS (SP+SB, CAMPAIGN_STATE=ENABLED,
   AD_GROUP_STATE=ENABLED, DATE ultimos 14 dias, EXCLUYENDO campanas con "Scavenger" en el nombre).
 - NO apliques a Amazon: crea los previews para el conteo, pero no llames al apply.
 - Escribi el recibo a Supabase (tipo='negatives_push', fecha=hoy ART) con summary.mode='dry-run' y
   applied[] = lo que HABRIA creado, mas held/asins_skipped/dropped.
-Continua ante error. No pidas confirmacion. Proyecto Supabase POD 66 "awhiobrcgghyiycxukjm".
+Continua ante error. No pidas confirmacion.
 ```
+En la Routine Offset 0 el OFFSET es 0; en Offset 5 es 5; etc.
 
-### Prompt por batch — APPLY (cuando ya lo validaste)
-Igual pero **aplica** los keyword-negatives:
+### Prompt — APPLY (cuando ya lo validaste)
+Igual pero **aplica** los keyword-negatives (mismo patrón de OFFSET por Routine):
 ```
-Corré el skill daily-negatives-autopush (modo run / apply) para estas 5 marcas:
-<CLIENTE 1>, <CLIENTE 2>, <CLIENTE 3>, <CLIENTE 4>, <CLIENTE 5>.
-Para cada una: lee el snapshot de negatives de HOY, pushea los keyword-negatives a AdLabs con el
-destino auto-derivado por linea (CONTAINS_ASINS SP+SB, ENABLED, ultimos 14 dias, EXCLUYENDO Scavenger),
-salteando ASINs (kind='asin') y terminos con caracteres especiales, y escribi el recibo negatives_push.
-Ancla "hoy" a ART. Continua ante error. No pidas confirmacion. Proyecto Supabase POD 66 "awhiobrcgghyiycxukjm".
+En Supabase (proyecto POD 66 "awhiobrcgghyiycxukjm"), tomá los 5 clientes que devuelva:
+  select brand from public.clients where active = true order by brand limit 5 offset OFFSET
+Corré el skill daily-negatives-autopush (modo run / apply) para cada uno de esos 5 clientes:
+lee el snapshot de negatives de HOY, pushea los keyword-negatives a AdLabs con el destino auto-derivado
+por linea (CONTAINS_ASINS SP+SB, ENABLED, ultimos 14 dias, EXCLUYENDO Scavenger), salteando ASINs
+(kind='asin') y terminos con caracteres especiales, y escribi el recibo negatives_push.
+Ancla "hoy" a ART. Continua ante error. No pidas confirmacion.
 ```
 
 ### Alternativa — una sola Routine all-clients (mínimo mantenimiento)
 Si preferís no mantener varias: 1 Routine, cron `30 10 * * *`, el mismo prompt pero **"para CADA cliente
-activo en Supabase (public.clients donde active = true)"** en vez de las 5 marcas. Más simple (no hay que
-recalcular grupos al agregar clientes), pero corre todos en una sola sesión larga (puede pasarse de la
-ventana del composer; el push igual queda en Supabase y lo toma el compose siguiente). Segura por la
-idempotencia, solo menos resiliente/puntual.
+activo (select brand from public.clients where active = true)"** sin `limit/offset`. Más simple, pero corre
+todos en una sola sesión larga (puede pasarse de la ventana del composer; el push igual queda en Supabase
+y lo toma el compose siguiente). Segura por la idempotencia, solo menos resiliente/puntual.
 
 ---
 

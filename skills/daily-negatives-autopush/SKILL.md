@@ -246,14 +246,18 @@ automatización o revisar el destino sin tocar Amazon.
 
 ---
 
-## Scheduling (Routines de nube — crear aparte, NO en este skill)
-- **Feeder autopush:** una Routine por cliente activo, **después** del feeder de `daily-negatives-supabase`
-  (que corre a mediodía ART). Escaloná +15 min respecto del identificador para que el snapshot ya esté escrito
-  (ej. identificador 12:00–12:30, autopush 12:45–13:15). Prompt: `Run daily-negatives-autopush for {brand_name}`.
-  Connectors: **Supabase + Adlabs** (+ SHURQ si se quiere el fallback). Sin repo, sin carpeta local.
-- Multi-marketplace = 1 Routine por config (cada CA es su propio `brand`).
-- **Orden importa:** si el autopush corre y no hay snapshot del día (identificador falló/atrasado), hace STOP suave
-  y no pushea nada — seguro por diseño.
+## Scheduling (Routines de nube — las crea Nacho, NO este skill)
+- **Feeder autopush — batches por OFFSET** (mismo patrón que las Routines "Daily Negatives"): una Routine
+  por offset, cada una procesa 5 clientes (`select brand from public.clients where active=true order by brand
+  limit 5 offset <N>`), con el **mismo prompt** cambiando solo `<N>` (0/5/10/15/…). Cantidad de Routines =
+  ceil(clientes_activos/5). Corren **después** del identificador y **antes** del composer (ej. identificador
+  06:00–06:30 ART, autopush 07:30–07:45 ART, composer 08:30 ART). Connectors **Supabase + Adlabs**, sesión
+  nueva por corrida, sin repo. Los prompts exactos (dry-run y apply) están en `skills/ROUTINES.md`.
+- **Estrenar en dry-run** (escribe el recibo con `mode='dry-run'` para poblar el tab Push, sin aplicar), y
+  pasar a apply cambiando el prompt cuando esté validado.
+- Multi-marketplace = ya cubierto (cada CA es su propio `brand`, entra en el orden alfabético del offset).
+- **Orden importa:** si el autopush corre y no hay snapshot del día (identificador falló/atrasado), hace STOP
+  suave y no pushea nada — seguro por diseño.
 
 ---
 
