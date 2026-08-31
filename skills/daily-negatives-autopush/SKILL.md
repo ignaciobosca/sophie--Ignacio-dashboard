@@ -5,8 +5,9 @@ description: >
   daily-negatives-supabase (dashboard_snapshots, tipo='negatives') y, SIN selección ni
   copy-paste, empuja cada candidato irrelevante como negativo a AdLabs, auto-derivando el
   destino desde el producto/línea del candidato: todos los ad groups ENABLED (SP + SB) que
-  anuncian los ASINs de esa línea, menos Scavenger. Empuja SOLO keywords al match del snapshot
-  (phrase/exact). Los ASINs (términos b0…) NUNCA se auto-negativizan: van a un bucket
+  anuncian los ASINs de esa línea, menos Scavenger. Empuja SOLO keywords: en phrase negativiza el
+  ROOT/raíz del snapshot (ej. "re u", no "re u hair serum"); en exact, el término. Los ASINs
+  (términos b0…) NUNCA se auto-negativizan: van a un bucket
   asins_skipped para revisar a mano. Deja recibo en Supabase (tipo='negatives_push') para
   auditoría e idempotencia. NUNCA pushea candidatos sin producto resoluble ("General (sin
   asignar)"): quedan para el dashboard/manual. Reusa la mecánica de adlabs-push-negatives.
@@ -43,9 +44,16 @@ crea + aplica los negativos vía el MCP de AdLabs, sin que toques el dashboard.
    Queda en el snapshot para el dashboard/manual y se reporta como "retenido". Un destino vacío
    jamás significa "todas".
 2. **Nivel = AD GROUP** (`AD_GROUP_NEGATIVE_*`). Sirve para SP y SB, y es quirúrgico.
-3. **Match type = el que trae el snapshot por candidato.** `match:"phrase"` → `AD_GROUP_NEGATIVE_PHRASE`;
-   `match:"exact"` → `AD_GROUP_NEGATIVE_EXACT`. No lo re-decide el modelo: el snapshot ya lo fijó.
-   (No hay product target acá — ver regla 10: los ASINs no se pushean.)
+3. **Match type + QUÉ texto se pushea (clave):** el snapshot fija el match; el modelo no lo re-decide.
+   - `match:"phrase"` → `AD_GROUP_NEGATIVE_PHRASE`, y **se pushea el `root`, NO el término completo.** El
+     `root` es la raíz limpia (marca/competidor/familia) que el identificador ya extrajo, ej.
+     `re u hair serum` → `root:"re u"`. Negar `re u` como phrase bloquea TODAS las búsquedas con "re u"
+     (re u serum, re u regrow…) **sin** tocar genéricos como "hair serum" — que es justo lo correcto. Si por
+     algún motivo `root` viene vacío, recién ahí pushear el `term` como phrase (fallback).
+   - `match:"exact"` → `AD_GROUP_NEGATIVE_EXACT`, y se pushea el **`term` completo** (root vacío en exact).
+   - No hay product target acá (regla 10: ASINs no se pushean).
+   > **Bonus:** pushear el root también evita violar el límite de Amazon de **4 palabras en phrase**
+   > (ej. `force facto hair growth excelerator` = 5 palabras violaría; el root `force facto` = 2, OK).
 4. **Auto-apply.** El flujo va derecho preview → resumen → apply, pero SIEMPRE imprime el resumen
    exacto (qué línea, qué ad groups, cuántos negativos) antes de aplicar. `dry-run` frena antes del apply.
 5. **Solo ENABLED.** Toda fetch de ad groups lleva `CAMPAIGN_STATE=ENABLED` + `AD_GROUP_STATE=ENABLED`.
@@ -144,6 +152,12 @@ antes de la B) saltee la línea B por error.
 ### Step 4 — Preparar candidatos + red de seguridad
 Cada candidato del snapshot trae `{term, clicks, spend, match, root, reason, kind, product, origin_campaign, origin_ad_group}`
 (los dos `origin_*` los persiste `daily-negatives-supabase` Step 5; si un snapshot viejo no los trae, quedan `""`).
+
+> **`push_text` — QUÉ se negativiza por candidato (regla 3):** para `match=="phrase"` → `push_text = root`
+> (si `root` está vacío, fallback `push_text = term`); para `match=="exact"` → `push_text = term`. **Todo lo
+> de abajo (caracteres especiales, límites, dedup, idempotencia, lo que se pushea y lo que se reporta) opera
+> sobre `push_text`, NO sobre el `term` crudo.** Guardá el/los `term` originales como `source_terms` para el recibo.
+
 Recorré `candidates` y clasificá cada uno **en este orden** (el primero que aplica gana):
 1. **Red de marca propia (regla 8):** si `kind=="asin"` y el ASIN ∈ `own_asins` → **descartar** (self-targeting).
    Si `kind=="keyword"` y el término es claramente marca propia → **descartar**. Sumar a `dropped[]` (`reason:"own_brand"`).
@@ -155,17 +169,22 @@ Recorré `candidates` y clasificá cada uno **en este orden** (el primero que ap
    `^b0[a-z0-9]{8}$`) → **NO pushear.** Sumalo a `asins_skipped[]` con TODO el contexto (`term`, `clicks`,
    `spend`, `product`, `origin_campaign`, `origin_ad_group`, `reason`) para que Nacho lo vea en el informe y
    decida a mano. **El autopush pushea SOLO keywords.**
-4. **Caracteres especiales NO negables (regla 11)** — ya solo keywords: si el término tiene algún char fuera
-   de `[A-Za-z0-9 '&-]` (no-ASCII o símbolos como coma/`/`/`+`/`%`/`"`) → **NO pushear.** Sumalo a `dropped[]`
-   con `reason:"special_char"`. Chequealo ANTES de agrupar/validar límites.
+4. **Caracteres especiales NO negables (regla 11)** — ya solo keywords: si el **`push_text`** tiene algún char
+   fuera de `[A-Za-z0-9 '&-]` (no-ASCII o símbolos como coma/`/`/`+`/`%`/`"`) → **NO pushear.** Sumalo a
+   `dropped[]` con `reason:"special_char"`. Chequealo ANTES de agrupar/validar límites. (Chequear el root y no
+   el término suele salvar casos: si `re u kofeiną` tiene root `re u`, el root es limpio y sí se puede negar.)
 5. **Retención por producto no resoluble (regla 1)** — keywords limpias: si `product == "General (sin
    asignar)"` o la línea no está en `line_asins` → **retener** (no pushear). Sumalo a `held[]` con TODO el
    contexto para que Nacho decida: `term`, `clicks`, `spend`, `match`, `kind`, `origin_campaign`,
    `origin_ad_group`, `reason`, y una **`suggested_line`** (best-effort): matcheá `origin_campaign`/
    `origin_ad_group` contra los nombres de línea de `line_asins`; si no hay match claro → `suggested_line: null`.
    NUNCA pushees por la sugerencia — es solo para el informe.
-6. **Idempotencia:** si `(term, match, line)` ∈ `already_pushed` → saltear (ya aplicado hoy para esa línea).
-Los keywords que sobreviven se agrupan por **línea de producto** (`product`) → `push_groups[linea] = {keywords_phrase[], keywords_exact[]}` (**sin ASINs** — nunca).
+6. **Idempotencia:** si `(push_text, match, line)` ∈ `already_pushed` → saltear (ya aplicado hoy para esa línea).
+Los keywords que sobreviven se agrupan por **línea de producto** (`product`) → `push_groups[linea] = {phrase[], exact[]}`
+(**sin ASINs** — nunca), donde cada lista tiene los `push_text` **deduplicados** (case-insensitive):
+- `phrase[]` = roots únicos de los candidatos phrase de esa línea (ej. `re u hair serum` + `re u serum` → un solo `re u`).
+- `exact[]` = términos de los candidatos exact.
+Por cada `push_text` conservá los `source_terms` (los términos originales que lo generaron) para el recibo.
 
 ### Step 5 — Resolver destino por línea + crear previews (reusa adlabs-push-negatives Paso 3–5)
 Por cada `linea` en `push_groups`:
@@ -181,16 +200,17 @@ get_entity_data(entity_type="ad_group", team_id, profile_id, chat_session_id,
    de capitalización que veas), o filtrá las filas Scavenger antes de crear el preview. Reportá cuántas excluiste.
 4. **Reference vacía (0 ad groups ENABLED que anuncian la línea):** NO pushees. Sumá la línea a `held_no_dest[]`
    con motivo "sin ad groups ENABLED que anuncien esta línea". (Nunca apliques sobre reference vacía.)
-5. **Validar términos** (límites Amazon): ≤80 chars; PHRASE ≤4 palabras; EXACT ≤10 palabras. El que viole se
-   saltea (sumalo a `dropped[]` `reason:"limit_violation"`). Los de caracteres especiales ya se sacaron en
-   Step 4 (regla 11). Deduplicá.
+5. **Validar `push_text`** (límites Amazon): ≤80 chars; PHRASE ≤4 palabras; EXACT ≤10 palabras. El que viole
+   se saltea (sumalo a `dropped[]` `reason:"limit_violation"`). Los de caracteres especiales ya se sacaron en
+   Step 4 (regla 11). (Como en phrase pusheás el root, casi nunca vas a rozar el límite de 4 palabras.)
    > **Nota (visto en el dry-run de Masofta):** algunos ad groups del set CONTAINS_ASINS son de **product
    > targeting** (no keyword). AdLabs **saltea solo** los keyword-negatives ahí ("ad group targets products")
    > y lo reporta en el preview/apply. No es error: por eso los negativos efectivos pueden ser < keywords ×
    > ad groups. Contá los `skipped` del recibo del preview.
-6. **Crear previews** (solo keywords — los ASINs NO se pushean, regla 10):
-   - keywords phrase → `create_entities(negative_targeting, reference=<ref>, keywords=[...phrase...], match_types=["AD_GROUP_NEGATIVE_PHRASE"])`
-   - keywords exact → `create_entities(negative_targeting, reference=<ref>, keywords=[...exact...], match_types=["AD_GROUP_NEGATIVE_EXACT"])`
+6. **Crear previews** (solo keywords — los ASINs NO se pushean, regla 10). Las keywords son los **`push_text`**
+   (roots para phrase, términos para exact):
+   - phrase → `create_entities(negative_targeting, reference=<ref>, keywords=phrase[], match_types=["AD_GROUP_NEGATIVE_PHRASE"])`  (ej. `["re u","force facto","sisley"]`, NO `"re u hair serum"`)
+   - exact → `create_entities(negative_targeting, reference=<ref>, keywords=exact[], match_types=["AD_GROUP_NEGATIVE_EXACT"])`
    Cada uno devuelve un `preview_id` + link "View in AdLabs". Conteo esperado = ad groups × match_types × keywords
    (producto cartesiano; los ya-existentes se saltean recién en el apply). **Nunca** crees previews de product
    target (`AD_GROUP_NEGATIVE_PRODUCT_TARGET`) en el autopush.
@@ -221,7 +241,8 @@ Construí `datos` schema `negatives-push-v1` y upserteá:
   "date_iso":"<HOY-ART>", "data_window":"<ayer, del snapshot>",
   "summary":{"applied_terms":N,"created":N,"skipped_existing":N,"held":N,"asins_skipped":N,"dropped":N,
              "held_spend":F,"asins_spend":F,"ad_groups_touched":N,"lines":N},
-  "applied":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact","kind":"keyword",
+  "applied":[{"term":"<push_text: root en phrase / término en exact>","source_terms":["<término(s) original(es)>"],
+              "clicks":N,"spend":F,"match":"phrase|exact","kind":"keyword",
               "line":"...","ad_groups":N,"created":N,"skipped":N,"preview_id":"..."}],
   "held":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact","kind":"keyword",
            "product":"General (sin asignar)","reason":"General (sin asignar) | sin ad groups ENABLED | ...",
@@ -231,8 +252,10 @@ Construí `datos` schema `negatives-push-v1` y upserteá:
   "dropped":[{"term":"...","reason":"own_brand | protected_relevant | special_char | limit_violation"}] }
 ```
 `held_spend`/`asins_spend` = suma de `spend` de retenidos / de ASINs skippeados (para priorizar). `applied`/`held`
-son **solo keywords** (`kind:"keyword"`); los ASINs viven en `asins_skipped[]`. El informe diario del Master
-Dashboard (tab **Push**) lee estas filas — ver `skills/push-report/` para el composer y el template.
+son **solo keywords** (`kind:"keyword"`); los ASINs viven en `asins_skipped[]`. En `applied`, `term` es el
+**`push_text`** (el root en phrase, ej. `re u`), y `clicks`/`spend` = **suma de los `source_terms`** que
+colapsaron en ese root. El tab **Push** del dashboard muestra `term` (o sea el root que realmente se negó) —
+los `source_terms` quedan en el recibo para auditoría. Ver `skills/push-report/` para el composer y el template.
 ```sql
 insert into public.dashboard_snapshots (cliente, tipo, fecha, datos)
 values ('<brand_name>', 'negatives_push', '<HOY-ART>', $push$<datos>$push$::jsonb)
