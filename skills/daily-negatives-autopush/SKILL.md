@@ -10,10 +10,9 @@ description: >
   (términos b0…) NUNCA se auto-negativizan: van a un bucket
   asins_skipped para revisar a mano. Deja recibo en Supabase (tipo='negatives_push') para
   auditoría e idempotencia. NUNCA pushea candidatos sin producto resoluble ("General (sin
-  asignar)"): quedan para el dashboard/manual. Reusa la mecánica de adlabs-push-negatives.
-  Modos: 'run' (default) y 'dry-run'. Trigger: "autopush negatives para [Brand]", "empujá los
-  negativos de hoy de [Brand]", "run daily-negatives-autopush for [Brand]", o una Routine. NO
-  identifica términos ni hace harvesting positivo.
+  asignar)"): quedan para el dashboard/manual. Modos: 'run' (default) y 'dry-run'. Trigger:
+  "autopush negatives para [Brand]", "run daily-negatives-autopush for [Brand]", o una Routine.
+  NO identifica términos ni hace harvesting positivo.
 ---
 
 # Daily Negatives — Autopush (snapshot → AdLabs, automático)
