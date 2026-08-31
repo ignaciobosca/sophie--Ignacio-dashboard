@@ -107,6 +107,16 @@ where lower(brand)=lower('<requested_brand>')
 Zero rows / `config` null → STOP y listá `select brand from public.clients where active`. Tomá `cfg = config`.
 Requeridos: `brand_name`, `adlabs_team_id`, `adlabs_profile_id`, `managed_asins`. Multi-marketplace = 1 corrida por config.
 
+> **⚠️ Diagnóstico honesto de config vs. error de AdLabs (aprendido 2026-08-31, caso BloomTrail):**
+> Chequeá los requeridos **contra el config de Supabase** y reportá exactamente lo que ves:
+> - Un campo **realmente** ausente/null → `reason:"config incompleto: falta <campo>"`, saltá ese cliente.
+> - Si `adlabs_team_id` y `adlabs_profile_id` **están presentes**, entonces **NUNCA** concluyas "profile no
+>   configurado" / "cuenta no conectada" si después una llamada a AdLabs falla. Un fallo del fetch de AdLabs
+>   (timeout, rate-limit por correr 5 clientes seguidos, sync en curso, reference expirada) es **transitorio**,
+>   no un problema de config. En ese caso: **reintentá el cliente 1 vez**; si vuelve a fallar, reportá el
+>   **error real de AdLabs** (`reason:"adlabs_error: <mensaje>"`), no lo aplicado queda pendiente para la
+>   próxima corrida (idempotente), y **seguís con los demás clientes**. No inventes causas de config.
+
 Armá el índice de líneas del cliente desde `cfg.managed_asins`:
 - `line_asins`: mapa `línea/parent → [asins]`. Derivá la línea de cada ASIN por `product_line` (si existe) o
   colapsando children a su parent (`parent_asin`), igual que `daily-negatives-supabase` Step 4b.
@@ -276,6 +286,8 @@ automatización o revisar el destino sin tocar Amazon.
 | Candidato `kind=="asin"` (término b0…) | NUNCA se pushea (regla 10). Va a `asins_skipped[]` para revisar a mano. |
 | Candidato `product = "General (sin asignar)"` (keyword) | RETENER (no push). Queda para el dashboard. Reportado en `held`. |
 | Línea sin ad groups ENABLED que la anuncien | RETENER esa línea (reference vacía). Nunca aplicar sobre 0 filas. |
+| Fetch de AdLabs falla para un cliente (timeout/rate-limit/sync/reference expirada) | Reintentar 1 vez; si sigue, `reason:"adlabs_error"`, seguir con los demás. **NUNCA** reportarlo como "profile no configurado" si el `adlabs_profile_id` está en el config. |
+| Config con `adlabs_profile_id`/`adlabs_team_id` ausente o null | `reason:"config incompleto: falta <campo>"`, saltar ese cliente (eso SÍ es problema de config). |
 | Campaña Scavenger en el destino | Excluida (regla 6). Reportar cuántas. |
 | Término/ASIN de marca propia o managed_asins | Descartar (red regla 8). Reportado en `dropped`. |
 | Término en protected_relevant | Descartar (red final). Reportado en `dropped`. |
