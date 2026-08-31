@@ -199,9 +199,14 @@ get_entity_data(entity_type="ad_group", team_id, profile_id, chat_session_id,
    de capitalización que veas), o filtrá las filas Scavenger antes de crear el preview. Reportá cuántas excluiste.
 4. **Reference vacía (0 ad groups ENABLED que anuncian la línea):** NO pushees. Sumá la línea a `held_no_dest[]`
    con motivo "sin ad groups ENABLED que anuncien esta línea". (Nunca apliques sobre reference vacía.)
-5. **Validar `push_text`** (límites Amazon): ≤80 chars; PHRASE ≤4 palabras; EXACT ≤10 palabras. El que viole
-   se saltea (sumalo a `dropped[]` `reason:"limit_violation"`). Los de caracteres especiales ya se sacaron en
-   Step 4 (regla 11). (Como en phrase pusheás el root, casi nunca vas a rozar el límite de 4 palabras.)
+5. **Validar `push_text` con FALLBACK a exact (NO drop):** ≤80 chars; PHRASE ≤4 palabras; EXACT ≤10 palabras.
+   - **PHRASE que supera 4 palabras (o 80 chars):** **NO descartar.** Re-rutealo a **EXACT del `term` completo**
+     (movelo de `phrase[]` a `exact[]`, con `push_text = term`). Solo si el `term` TAMBIÉN supera exact
+     (>10 palabras o >80 chars) → drop `reason:"limit_violation"`. Motivo (pedido de Nacho): mejor negar el
+     waste como exact que perderlo por el límite de phrase.
+   - **EXACT que supera 10 palabras / 80 chars:** drop `reason:"limit_violation"` (raro).
+   Los de caracteres especiales ya se sacaron en Step 4 (regla 11). (Como en phrase pusheás el root, casi nunca
+   rozás el límite; y si lo rozás, cae a exact en vez de perderse.)
    > **Nota (visto en el dry-run de Masofta):** algunos ad groups del set CONTAINS_ASINS son de **product
    > targeting** (no keyword). AdLabs **saltea solo** los keyword-negatives ahí ("ad group targets products")
    > y lo reporta en el preview/apply. No es error: por eso los negativos efectivos pueden ser < keywords ×
