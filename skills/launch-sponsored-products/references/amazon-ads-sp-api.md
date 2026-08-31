@@ -128,7 +128,7 @@ arguments = {
     "adGroups": [{
       "adProduct": "SPONSORED_PRODUCTS",
       "campaignId": "<from B1>",
-      "name": "SO | <Product> | <ASIN> | SPM | <Theme> | Exact",
+      "name": "SO | <Product> | <ASIN> | SPM | <Theme> | Exact",   // MUST equal the campaign name (B1) verbatim
       "state": "ENABLED",
       "bid": { "defaultBid": 0.75 }             // fallback bid for the ad group
     }]

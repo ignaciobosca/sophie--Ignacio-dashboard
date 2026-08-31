@@ -74,14 +74,16 @@ For each campaign, ask (reuse earlier answers as defaults so he isn't re-asked n
 
 1. **Targeting type:** Auto · Manual keywords · Manual product/ASIN targeting.
 2. **ASIN(s) to advertise:** he pastes them. (For sellers you'll resolve ASIN→SKU later.)
-3. **Campaign name — confirm the theme first.** For manual keyword campaigns the name
-   carries a `[Theme]` (see convention below): the semantic cluster the keywords belong to.
-   Don't silently invent it. **Suggest** a theme inferred from the keyword list, show it,
-   and ask Nacho to confirm or edit it (he may also split a heterogeneous list into
-   several themes → several campaigns). If the pasted keywords clearly span more than one
-   topic (e.g. "hair growth serum" vs "scalp serum"), point that out and offer to split.
-   Only after the theme is confirmed, assemble and show the full name for a final edit.
-4. **Daily budget.**
+3. **Campaign name — fixed structure, confirm the theme.** The name ALWAYS follows the
+   6-field structure in *Naming convention* below:
+   `SO | [Product] | [ASIN] | SPM|SPA | [Keyword Theme] | [Match Type]`. Only the
+   **[Keyword Theme]** is up to you to infer — **suggest** it from the keyword list and ask
+   Nacho to confirm or edit (offer to split a heterogeneous list into several themes →
+   several campaigns). Everything else is determined by the choices already made. Assemble
+   the full name and **show it inside a fenced code block** (never inline — a `|` in prose
+   truncates it) for a final edit. The **ad group name is identical to the campaign name.**
+4. **Daily budget — default $20.** Propose **$20** as the default and let Nacho change it;
+   if he just confirms, use $20.
 5. **Targets** (skip for Auto):
    - He pastes the keyword list (or ASINs for product targeting).
    - **One match type for the whole batch** — ask which (Broad / Phrase / Exact for
@@ -126,9 +128,11 @@ strategy, placement adjustments, activation date, advertised products, and the t
 list with per-target match type, **search volume**, and bid (and negatives). Then ask
 for **one final confirmation** to create everything. Do not create before this OK.
 
-**Rendering:** campaign names contain `|` (the Sophie convention), which breaks Markdown
-tables. Always show each full campaign name on its own line or in a code block — never
-inside a piped table — so it's never truncated.
+**Rendering:** campaign/ad-group names contain `|`, which breaks Markdown (inline or in a
+table) and truncated a real preview down to just "SO |". So show **every name inside its
+own fenced code block** (triple backticks), one per line — never inline in a sentence,
+never in a piped table. Put the rest of each campaign's fields (budget, bids, dates, etc.)
+in the surrounding text or a table, but keep the name itself in the code block.
 
 ### Step 6 — Create (after OK)
 Create each campaign using `references/amazon-ads-sp-api.md`:
@@ -145,28 +149,47 @@ reason and enough detail to retry).
 
 ---
 
-## Naming convention (Sophie)
+## Naming convention (FIXED — always exactly this)
 
-Mirror `sp-bulk-builder`. Base pattern:
+Every campaign name follows this exact 6-field structure, in this order, joined by
+" | " (space-pipe-space). No other variants, ever:
 
 ```
-SO | [Product Name] | [ASIN] | [Campaign Type] | [Details]
+SO | [Product] | [ASIN] | [SPM|SPA] | [Keyword Theme] | [Match Type]
 ```
 
-Campaign-type strings:
-- Auto: `SPA | Close Match` · `SPA | Loose Match` · `SPA | Substitutes` · `SPA | Complements`
-  (for a plain single auto campaign, `SPA | Auto` is fine)
-- Manual keyword theme: `SPM | [Theme] | Broad` · `SPM | [Theme] | Phrase` · `SPM | [Theme] | Exact`
-- Single keyword: `SPM | SK | Br|Ph|Ex | [keyword]`
-- Brand: `SPM | Brand [Theme] | Broad|Phrase|Exact` · `SPM | Brand Only`
-- Product targeting: `SPM | PT | [Competitor Brand] | Exact` · `SPM | PT | [Competitor Brand] | Expanded`
-- Catch-all: `Catch All | 10 cents`
+- **Field 4** is `SPM` for manual campaigns or `SPA` for auto campaigns.
+- **[Keyword Theme]** is the keyword cluster label (e.g. "Hair Growth", "Scalp Care") —
+  not the product, not the match type. For **auto (SPA)** campaigns use `Auto` as the theme.
+- **[Match Type]** — manual keyword: `Broad` / `Phrase` / `Exact`; manual product
+  targeting: `Product Exact` / `Product Similar`; auto (SPA): `Auto` (or the auto group
+  Close Match / Loose Match / Substitutes / Complements if Nacho splits them).
 
-`[Theme]` is the keyword cluster label (e.g. "Hair Growth", "Scalp Care"), not the
-product or match type. Each theme becomes a campaign, split by match type. Suggest the
-theme from the keywords and have Nacho confirm/edit it (Step 2.3) before building the name.
+**The ad group name MUST be identical to the campaign name** — same 6 fields, same order.
+Set them to the same string.
 
-Always show the suggested name and let Nacho edit before it's locked in.
+Examples:
+```
+SO | Hair Growth Serum 30ml | B0CWY24FTC | SPM | Hair Growth | Exact
+SO | Hair Growth Serum 30ml | B0CWY24FTC | SPA | Auto | Auto
+```
+
+Building the name (Step 2.3): infer the **[Keyword Theme]** from the keywords, **suggest**
+it and have Nacho confirm/edit before locking (offer to split a heterogeneous keyword list
+into several themes → several campaigns). Everything else in the name is fixed. Always show
+the suggested name and let Nacho edit before it's locked in.
+
+**Reference existing account campaigns.** When it helps (matching an existing product name
+spelling, an established theme label, portfolio, or how similar campaigns are structured),
+pull the account's current campaigns first — `mcp__Sophie_Hub__list_ad_campaigns` (fast), or
+Amazon Ads `campaign_management-query_campaign` via `sophie_call_amazon_ads_mcp` — and align
+the new names/structure to what's already there so the account stays consistent.
+
+**Displaying names — never let them truncate.** A `|` in prose or inside a Markdown table
+breaks rendering (that's what cut a preview down to just "SO |"). So **always show every
+campaign/ad-group name inside its own fenced code block** (triple backticks) on its own
+line — never inline in a sentence, never in a piped table, never after a bullet. This
+applies to the intake preview, the theme confirmation, and the final summary.
 
 ---
 
