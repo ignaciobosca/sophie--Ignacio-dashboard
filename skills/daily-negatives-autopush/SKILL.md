@@ -162,8 +162,22 @@ Recorré `candidates` y clasificá cada uno **en este orden** (el primero que ap
    Si `kind=="keyword"` y el término es claramente marca propia → **descartar**. Sumar a `dropped[]` (`reason:"own_brand"`).
 2. **Red de protected_relevant (regla — última palabra):** cargá `protected_relevant` del perfil
    (`select profile->'protected_relevant' from public.relevance_profiles where brand='<brand_name>'`).
-   Si el término matchea (igualdad o contención/wildcard) una excepción protegida → **descartar**
-   (`dropped[]`, `reason:"protected_relevant"`). (No debería aparecer si el snapshot está sano; red final.)
+   El `reason` de cada excepción FIJA el alcance (igual que en el identificador): **contención/wildcard**
+   (raíz de marca/atributo propio) vs **SOLO igualdad exacta** ("SOLO igualdad exacta"/"equality only" en el
+   `reason`, típico de un descriptor de categoría relevante como término pelado). Chequeá **el `push_text`** (root
+   en phrase, term en exact) contra las excepciones y decidí así:
+   - **Match por contención/wildcard** → toda la familia es relevante → **descartar** (`dropped[]`,
+     `reason:"protected_relevant"`).
+   - **Match por igualdad, candidato PHRASE, y el `term` completo es MÁS LARGO que el término protegido y NO
+     matchea ninguna excepción** → NO descartes ni pushees la raíz ancha: **re-rutealo a EXACT del `term`
+     completo** (movelo a `exact[]`, `push_text = term`). Así negás el término específico irrelevante sin
+     bloquear la raíz relevante. Ej. Hekaya: `turkish` está protegido SOLO por igualdad; un candidato
+     `turkish cotton towel` clasificado phrase con `root:"turkish"` NO se pushea como phrase `turkish` (eso
+     bloquearía tráfico relevante) — se pushea como **exact `turkish cotton towel`**. En cambio la búsqueda
+     pelada `turkish` (term == protegido) cae en el punto de abajo y se descarta.
+   - **Match por igualdad y el `push_text`/`term` ES el término protegido** (búsqueda pelada, o exact ya igual)
+     → **descartar** (`dropped[]`, `reason:"protected_relevant"`). Nunca se negativiza el término relevante pelado.
+   (Con el snapshot sano casi no aparece; es la red final + el ruteo phrase→exact para descriptores protegidos.)
 3. **ASINs NUNCA se auto-negativizan (regla 10 — pedido de Nacho):** si `kind=="asin"` (el término matchea
    `^b0[a-z0-9]{8}$`) → **NO pushear.** Sumalo a `asins_skipped[]` con TODO el contexto (`term`, `clicks`,
    `spend`, `product`, `origin_campaign`, `origin_ad_group`, `reason`) para que Nacho lo vea en el informe y
@@ -317,7 +331,9 @@ automatización o revisar el destino sin tocar Amazon.
 | Config con `adlabs_profile_id`/`adlabs_team_id` ausente o null | `reason:"config incompleto: falta <campo>"`, saltar ese cliente (eso SÍ es problema de config). |
 | Campaña Scavenger en el destino | Excluida (regla 6). Reportar cuántas. |
 | Término/ASIN de marca propia o managed_asins | Descartar (red regla 8). Reportado en `dropped`. |
-| Término en protected_relevant | Descartar (red final). Reportado en `dropped`. |
+| `push_text` en protected_relevant por **contención** | Descartar (toda la familia es relevante). Reportado en `dropped`. |
+| Raíz de **phrase** = término protegido por **igualdad** y el `term` completo es más largo (ej. `turkish` protegido / `turkish cotton towel`) | NO pushear la raíz ancha: re-rutear a **exact del `term` completo**. La raíz relevante nunca se niega; el término específico irrelevante sí. |
+| Búsqueda **pelada** = término protegido por igualdad (`term == turkish`) | Descartar (`protected_relevant`). Nunca se niega el término relevante solo. |
 | Keyword con caracteres especiales (no-ASCII/coma/símbolos) | NO negable (regla 11). `dropped` con `reason:"special_char"`. |
 | Ad group de product targeting en el set CONTAINS_ASINS | AdLabs saltea solo el keyword-negative ahí ("ad group targets products"). Contar los `skipped` del preview. |
 | Re-run el mismo día | Idempotente: saltea `(term,match)` ya en el recibo; mergea lo nuevo. |
