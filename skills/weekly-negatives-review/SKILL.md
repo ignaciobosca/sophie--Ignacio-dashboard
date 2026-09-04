@@ -161,6 +161,12 @@ confianza desc. Si `proposal` está vacía → todo sano, reportá y saltá al S
    > ¿Archivo estos {N}? Podés decir "todos", "solo los de alta confianza", o listarme cuáles.
 2. **Esperá el OK de Nacho.** Sin confirmación explícita **no se archiva nada.** ("todos" / "solo alta" /
    una sublista son confirmaciones válidas.)
+   > **Bloque copy-paste del dashboard (tab Review):** Nacho puede tildar términos en el tab Review del
+   > Master Dashboard y pegar el bloque que genera. Ese bloque **ES una confirmación válida** (equivale a
+   > "listarme cuáles"): trae la marca, la sublista `- "término" (MATCH)`, y pide explícitamente (1) archivar
+   > en AdLabs y (2) proteger en `protected_relevant` como **IGUALDAD EXACTA**. Tratá SOLO esos términos.
+   > Si el bloque llega en un chat sin la propuesta previa cargada, re-descubrí/re-fetcheá esos negativos por
+   > `(texto, match)` de la marca (necesitás sus `id`/`campaign_id`/`match_type_raw` para archivar).
 3. **Al confirmar, archivá** los seleccionados en AdLabs. **Mecánica confirmada** (`adlabs://docs/actions/negative_targeting`):
    necesitás una reference row-level SOLO con los negativos a archivar (con columnas `id`,`match_type_raw`,`campaign_id`).
    Armala re-fetcheando `negative_targeting` filtrado por `NEGATIVE_TARGET_ID IN [<ids seleccionados>]` (reference fresca), y:
@@ -177,6 +183,10 @@ confianza desc. Si `proposal` está vacía → todo sano, reportá y saltá al S
    para que `daily-negatives-autopush` no lo vuelva a negar. Reusá `daily-negatives-supabase` MODE=learn
    (upsert a `public.relevance_profiles`, con chequeo de conflicto: si el término está en roots/competitors,
    removerlo — gana la excepción — y loguearlo en `change_log`). Confirmá el learn en el resumen.
+   > **Alcance por defecto = IGUALDAD EXACTA** (pedido de Nacho, y lo que dice el bloque del dashboard):
+   > escribí cada excepción con `reason` "relevante (weekly review): no negar - SOLO igualdad exacta (Exact)".
+   > Así se protege el término pelado sin blindar variantes más largas irrelevantes que lo contengan. Solo
+   > usá contención si Nacho lo pide explícito para ese término (raíz de marca/atributo propio).
 
 ### Step 6 — Snapshot de review a Supabase (auditoría)
 `datos` schema `negatives-review-v1`:

@@ -67,9 +67,15 @@ Y pegar la función **`renderReview()`** completa (de `review-tab.js`) junto a l
 ## Qué muestra el tab (por cliente, selector de revisión)
 
 - **KPIs:** Revisados · A archivar · Archivados.
-- **Candidatos a archivar** (`proposal[]`, ordenados por confianza alta→baja): Término · Match · Confianza
-  (alta/media/baja) · Producto/línea · Motivo. Es la lista accionable: para des-negativizar, Nacho dice en un
-  chat **"archivá la revisión de [Brand]"** (todos) o **"archivá solo los de alta confianza"** — IRREVERSIBLE.
+- **Candidatos a archivar** (`proposal[]`, ordenados por confianza alta→baja): **checkbox** · Término · Match ·
+  Confianza (alta/media/baja) · Producto/línea · Motivo. Toolbar: **Todos / Solo alta confianza / Ninguno** +
+  **Generar bloque (N)**.
+- **Selector + bloque copy-paste:** Nacho tilda los candidatos que quiere y aprieta **Generar bloque** → un
+  `textarea` (con botón **Copiar**) con un **comando listo para pegar en un chat**. El comando trae la marca +
+  la sublista `- "término" (MATCH)` y pide (1) **archivar** en AdLabs (`negative_targeting` → `update_status
+  ARCHIVED`, solo esos) y (2) **proteger** en `protected_relevant` como **IGUALDAD EXACTA**. Pegándolo en un
+  chat (Supabase + Adlabs), `weekly-negatives-review` lo ejecuta. IRREVERSIBLE. (También sigue valiendo el
+  atajo "archivá la revisión de [Brand]" / "solo los de alta confianza".)
 - **Mantenidos negados pese a tocar un término relevante** (`excluded_root_conflicts_kept[]`): informativo —
   términos que contienen un root protegido pero se mantienen negados por mismatch de producto/intent.
 

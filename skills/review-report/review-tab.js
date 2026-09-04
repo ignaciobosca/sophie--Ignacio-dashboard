@@ -7,6 +7,10 @@
    composer master-dashboard-supabase desde los snapshots tipo='negatives_review'
    (schema negatives-review-v1 escrito por weekly-negatives-review).
 
+   Trae un SELECTOR por termino (checkbox) + un boton "Generar bloque" que arma un
+   comando COPY-PASTE con los seleccionados, para pegar en un chat: archiva esos
+   negativos en AdLabs + los agrega a protected_relevant como IGUALDAD EXACTA.
+
    Ver REVIEW-PATCH.md para los 5 puntos de insercion (DOM, TABS[], allClients,
    clientSel.onchange, boot) ademas de esta funcion.
    ============================================================================= */
@@ -16,17 +20,18 @@ function renderReview(){
   const R=DATA.review||{clients:[]};
   const intro=el('div'); intro.style.cssText='margin-bottom:14px;color:var(--mut);font-size:13px';
   intro.innerHTML='Revision semanal (viernes): negativos ya aplicados que <b>podrian estar bloqueando '+
-    'trafico relevante</b> y son <b>candidatos a archivar</b> (des-negativizar). El skill solo PROPONE - no '+
-    'archiva solo, porque archivar en AdLabs es irreversible. Para confirmar deci en un chat: '+
-    '<b>"archiva la revision de '+escapeHtml(CURRENT||'[Brand]')+'"</b> (todos) o '+
-    '<b>"archiva solo los de alta confianza"</b>.';
+    'trafico relevante</b> y son <b>candidatos a archivar</b> (des-negativizar). Tilda los que quieras y '+
+    'genera el bloque: es un comando listo para pegar en un chat que <b>archiva</b> esos negativos en AdLabs '+
+    'y los <b>protege</b> (igualdad exacta) para que el push no los vuelva a negar. Archivar es IRREVERSIBLE.';
   p.appendChild(intro);
 
+  function esa(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   function confRank(x){const c=(x||'').toLowerCase();return c==='high'?0:(c==='med'||c==='medium'?1:2);}
   function confChip(x){const c=(x||'').toLowerCase();
     const col=c==='high'?'var(--green)':(c==='med'||c==='medium'?'var(--amber)':'var(--dim)');
     const lbl=c==='high'?'alta':(c==='med'||c==='medium'?'media':(c==='low'?'baja':(x||'-')));
     return '<span style="color:'+col+';font-weight:700;font-size:12px">'+lbl+'</span>';}
+  const btnCss='padding:4px 10px;border:1px solid var(--dim);border-radius:6px;background:transparent;color:inherit;cursor:pointer;font-size:12px';
 
   const sub=(R.clients||[]).filter(c=>c.brand_name===CURRENT);
   sub.forEach((c,ci)=>{
@@ -53,8 +58,9 @@ function renderReview(){
 
     function renderDay(di){
       const d=days[di]||{};
-      const prop=(d.proposal||[]).slice();
+      const prop=(d.proposal||[]).slice().sort((a,b)=>confRank(a.confidence)-confRank(b.confidence));
       const kept=d.excluded_kept||[];
+      const dateIso=d.date_iso||'';
       $('#rv-rev-'+ci).textContent=(d.reviewed!=null?d.reviewed:'-');
       $('#rv-prop-'+ci).textContent=(d.proposed!=null?d.proposed:prop.length);
       $('#rv-arch-'+ci).textContent=(d.archived!=null?d.archived:0);
@@ -62,28 +68,77 @@ function renderReview(){
 
       body.innerHTML='';
 
-      // --- CANDIDATOS A ARCHIVAR ---
+      // --- CANDIDATOS A ARCHIVAR (con selector) ---
       const h1=el('div'); h1.style.cssText='font-weight:600;margin:6px 0 4px;color:var(--amber)';
       h1.innerHTML=`Candidatos a archivar (${prop.length})`;
       body.appendChild(h1);
+
       if(prop.length){
+        // toolbar de seleccion
+        const tb=el('div'); tb.style.cssText='display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 8px';
+        tb.innerHTML=`<span class="dim" style="font-size:12px">Seleccionar:</span>
+          <button id="rv-all-${ci}" style="${btnCss}">Todos</button>
+          <button id="rv-high-${ci}" style="${btnCss}">Solo alta confianza</button>
+          <button id="rv-none-${ci}" style="${btnCss}">Ninguno</button>
+          <span style="flex:1"></span>
+          <button id="rv-gen-${ci}" style="${btnCss};border-color:var(--amber);color:var(--amber);font-weight:600">Generar bloque (<span id="rv-cnt-${ci}">0</span>)</button>`;
+        body.appendChild(tb);
+
         const tw=el('div'); tw.style.overflowX='auto';
         const t=el('table');
-        t.innerHTML='<thead><tr><th class="term">Termino</th><th>Match</th><th class="num">Confianza</th>'+
-          '<th>Producto / linea</th><th>Motivo</th></tr></thead>';
-        const tb=el('tbody');
-        prop.sort((a,b)=>confRank(a.confidence)-confRank(b.confidence)).forEach(x=>tb.appendChild(el('tr','',
-          `<td class="term">${escapeHtml(x.texto||x.term||'')}</td>`+
-          `<td>${escapeHtml(x.match||x.kind||'')}</td>`+
-          `<td class="num">${confChip(x.confidence)}</td>`+
-          `<td>${escapeHtml(x.product||'')}</td>`+
-          `<td class="dim">${escapeHtml(x.reason||'')}</td>`)));
-        t.appendChild(tb); tw.appendChild(t); body.appendChild(tw);
-        const hint=el('div','note'); hint.style.marginTop='8px';
-        hint.innerHTML='Estos negativos podrian estar bloqueando busquedas relevantes. Revisa cada uno; para '+
-          'des-negativizarlos deci: <b>"archiva la revision de '+escapeHtml(c.brand_name)+'"</b> (archiva todos) o '+
-          '<b>"archiva solo los de alta confianza de '+escapeHtml(c.brand_name)+'"</b>. Es IRREVERSIBLE.';
-        body.appendChild(hint);
+        t.innerHTML='<thead><tr><th style="width:28px"></th><th class="term">Termino</th><th>Match</th>'+
+          '<th class="num">Confianza</th><th>Producto / linea</th><th>Motivo</th></tr></thead>';
+        const tbody=el('tbody');
+        prop.forEach((x,xi)=>{
+          const term=x.texto||x.term||'';
+          const match=(x.match||x.kind||'').toString();
+          tbody.appendChild(el('tr','',
+            `<td><input type="checkbox" class="rv-pick" data-i="${xi}" data-term="${esa(term)}" data-match="${esa(match)}" data-conf="${esa(x.confidence||'')}"></td>`+
+            `<td class="term">${escapeHtml(term)}</td>`+
+            `<td>${escapeHtml(match)}</td>`+
+            `<td class="num">${confChip(x.confidence)}</td>`+
+            `<td>${escapeHtml(x.product||'')}</td>`+
+            `<td class="dim">${escapeHtml(x.reason||'')}</td>`));
+        });
+        t.appendChild(tbody); tw.appendChild(t); body.appendChild(tw);
+
+        // bloque copy-paste (oculto hasta generar)
+        const blk=el('div'); blk.id='rv-blk-'+ci; blk.hidden=true; blk.style.marginTop='10px';
+        blk.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <b style="font-size:13px">Bloque para pegar en un chat</b>
+            <button id="rv-copy-${ci}" style="${btnCss}">Copiar</button>
+            <span id="rv-copied-${ci}" class="dim" style="font-size:12px"></span></div>
+          <textarea id="rv-ta-${ci}" readonly style="width:100%;min-height:150px;font-family:monospace;font-size:12px;box-sizing:border-box;padding:8px;border:1px solid var(--dim);border-radius:6px;background:transparent;color:inherit"></textarea>
+          <div class="note" style="margin-top:6px">Pega este bloque en un chat con Claude (conectores Supabase + Adlabs). Archiva los negativos seleccionados en AdLabs y los agrega a protected_relevant como igualdad exacta. Es IRREVERSIBLE.</div>`;
+        body.appendChild(blk);
+
+        // handlers
+        const picks=()=>Array.from(body.querySelectorAll('.rv-pick'));
+        const updCnt=()=>{$('#rv-cnt-'+ci).textContent=picks().filter(p=>p.checked).length;};
+        body.querySelectorAll('.rv-pick').forEach(cb=>cb.addEventListener('change',updCnt));
+        $('#rv-all-'+ci).onclick=()=>{picks().forEach(p=>p.checked=true);updCnt();};
+        $('#rv-none-'+ci).onclick=()=>{picks().forEach(p=>p.checked=false);updCnt();};
+        $('#rv-high-'+ci).onclick=()=>{picks().forEach(p=>{p.checked=((p.getAttribute('data-conf')||'').toLowerCase()==='high');});updCnt();};
+        $('#rv-gen-'+ci).onclick=()=>{
+          const sel=picks().filter(p=>p.checked);
+          const blkEl=$('#rv-blk-'+ci), ta=$('#rv-ta-'+ci);
+          if(!sel.length){blkEl.hidden=false; ta.value='(No hay terminos seleccionados. Tilda al menos uno.)'; return;}
+          const lines=sel.map(p=>'- "'+p.getAttribute('data-term')+'" ('+((p.getAttribute('data-match')||'').toUpperCase()||'EXACT')+')').join('\n');
+          const txt=
+            'Archiva y protege en '+c.brand_name+' estos negativos de la revision semanal'+(dateIso?(' ('+dateIso+')'):'')+'.\n'+
+            'Para CADA termino de la lista: (1) archivalo en AdLabs (entity negative_targeting -> update_status ARCHIVED, solo estos, con su reference row-level) y '+
+            '(2) agregalo a protected_relevant del perfil de relevancia de '+c.brand_name+' como IGUALDAD EXACTA (Exact), dedup por termino, con nota en change_log. '+
+            'No archives ni protejas ningun otro negativo. Es irreversible; confirmo estos:\n'+lines;
+          ta.value=txt; blkEl.hidden=false;
+          ta.focus(); ta.select();
+        };
+        $('#rv-copy-'+ci).onclick=()=>{
+          const ta=$('#rv-ta-'+ci); ta.select();
+          const done=()=>{$('#rv-copied-'+ci).textContent='Copiado';setTimeout(()=>{$('#rv-copied-'+ci).textContent='';},2000);};
+          if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(done,()=>{try{document.execCommand('copy');done();}catch(e){}});}
+          else{try{document.execCommand('copy');done();}catch(e){}}
+        };
+        updCnt();
       } else body.appendChild(el('div','empty','Sin candidatos a archivar esta semana. Los negativos aplicados no bloquean trafico relevante.'));
 
       // --- MANTENIDOS NEGADOS (conflicto de root, informativo) ---
