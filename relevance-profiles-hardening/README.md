@@ -63,11 +63,21 @@ sistema **gana confianza con el uso**.
 |---|---|---|
 | 1 | `01-relevance-profile-v2.md` — schema v2 (contrato) | ✅ listo |
 | 1 | `01-migrate-v1-to-v2.py` — migración v1→v2 (idempotente, con smoke test) | ✅ listo |
-| 2 | `02-client-onboarding.SKILL.md` — auto-jala ficha + refresh manual | ⏳ |
-| 3 | `03-daily-negatives-supabase.SKILL.md` — motor confidence/evidence + ficha v2 + learn v2 | ⏳ |
-| 4 | `04-daily-negatives-autopush.SKILL.md` — gate high+medium + MODE=approved | ⏳ |
-| 5 | `05-dashboard.md` — sección LOW: checkboxes + "copiar aprobados" | ⏳ |
+| 2 | `02-client-onboarding.SKILL.md` — auto-jala ficha + refresh manual (Step 4.6 + MODE refresh_fiche) | ✅ listo |
+| 3 | `03-daily-negatives-supabase.SKILL.md` — motor confidence/evidence + ficha v2 + learn v2 | ✅ listo |
+| 4 | `04-daily-negatives-autopush.SKILL.md` — gate high+medium + MODE=approved | ✅ listo |
+| 5 | `05-dashboard.md` — cola de aprobación LOW: checkboxes + "copiar aprobados" | ✅ listo |
 
-**Instalación (por archivo #2–#5):** reemplazás el `SKILL.md` viejo por el nuevo y re-sincronizás.
-**Migración (#1):** correr `01-migrate-v1-to-v2.py` en DRY-RUN → validar 1–2 perfiles reales → APPLY.
-Ver el header del script.
+## Orden de instalación (recomendado)
+
+1. **Migrar los perfiles** (#1): correr `01-migrate-v1-to-v2.py` en DRY-RUN → validar 1–2 perfiles reales
+   conmigo → APPLY. (El motor lee v1 y v2, así que esto no es bloqueante, pero conviene primero.)
+2. **Reemplazar los 3 SKILL.md** (#2, #3, #4) por sus versiones nuevas y re-sincronizar. Son 1:1.
+3. **Cargar la ficha**: correr `client-onboarding` (o *"actualizar ficha de [producto] de [Brand]"*) para
+   un cliente piloto → verificar que `product_fiche` quedó en `relevance_profiles`.
+4. **Dashboard** (#5): aplicar el cambio del composer + el renderer en el template del master.
+5. **Probar el ciclo**: correr el daily → ver confidence en el snapshot → autopush (high/medium push, low
+   retenido) → aprobar un LOW desde el dashboard → MODE=approved (push + aprende) → confirmar que el término
+   quedó en el perfil como `basis=profile`/`high`.
+
+**Sugerencia:** estrenar el autopush V2 en `dry-run` sobre 1 cliente antes de dejar la Routine en apply.
