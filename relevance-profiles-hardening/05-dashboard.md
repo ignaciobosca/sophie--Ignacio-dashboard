@@ -131,13 +131,31 @@ function aqFallbackCopy(text, cb){
 </script>
 ```
 
-**Dónde llamarla:** dentro del render del tab Push, por cada cliente, después de las secciones existentes
-(applied / held / asins_skipped). Ej.:
+**Dónde llamarla — integración REAL con el template del master (verificado 2026-09-06):**
+`renderPush()` arma, por cliente, un panel con un **selector de día** y una función interna `renderDay(di)`
+que pinta applied/held/asins/dropped del día elegido en el `<div id="pu-body-{ci}">`. La cola de LOW
+tiene que renderizarse **dentro de `renderDay(di)`** (así se re-renderiza al cambiar de día) y usar el día `d`:
 
-```js
-// dentro del loop de clientes del tab Push:
-html += renderApprovalQueue(client.brand_name, client.days[0]);
-```
+1. Definí `renderApprovalQueue`, `aqToggleAll`, `aqCopyApproved`, `aqFallbackCopy` como funciones **globales**
+   del `<script>` (una vez), tal como están arriba — pero hacé el `slug` único por **cliente+día** para que
+   los checkboxes no colisionen entre paneles/días: cambiá la firma a
+   `renderApprovalQueue(brand, day, uid)` y usá `uid` (ej. `` `${ci}_${di}` ``) en vez de `slug` para los ids/clases.
+2. Al final de `renderDay(di)`, después de appendear las secciones existentes a `body`, sumá:
+   ```js
+   // cola de aprobación de LOW (gate del autopush V2)
+   const aq = el('div');
+   aq.innerHTML = renderApprovalQueue(c.brand_name, d, ci + '_' + di);
+   body.appendChild(aq);
+   ```
+   (usa `c` y `d` que ya existen en ese scope; `el(...)` es el helper del template.)
+3. El KPI strip del panel puede sumar un contador LOW opcional leyendo `s.held_low_confidence` del summary.
+
+Es **aditivo**: si `d.held_low_confidence` está vacío/ausente (recibos pre-V2), la cola muestra el estado
+"sin candidatos de baja confianza" y no afecta nada del resto del tab.
+
+> ⚠️ Aplicar sobre el template en vivo (`dashboards` id='master' en Supabase) recién cuando el autopush V2
+> esté instalado (si no, la cola sale siempre vacía). Validar el JS antes de publicar — un error de sintaxis
+> deja el dashboard en blanco para todo el equipo.
 
 ---
 

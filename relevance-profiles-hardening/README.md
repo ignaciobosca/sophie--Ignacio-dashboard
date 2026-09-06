@@ -66,7 +66,8 @@ sistema **gana confianza con el uso**.
 | 2 | `02-client-onboarding.SKILL.md` — auto-jala ficha + refresh manual (Step 4.6 + MODE refresh_fiche) | ✅ listo |
 | 3 | `03-daily-negatives-supabase.SKILL.md` — motor confidence/evidence + ficha v2 + learn v2 | ✅ listo |
 | 4 | `04-daily-negatives-autopush.SKILL.md` — gate high+medium + MODE=approved | ✅ listo |
-| 5 | `05-dashboard.md` — cola de aprobación LOW: checkboxes + "copiar aprobados" | ✅ listo |
+| 5 | `05-dashboard.md` — cola de aprobación LOW: checkboxes + "copiar aprobados" (renderer + integración real con renderDay) | ✅ listo |
+| 6 | `06-master-dashboard-supabase.SKILL.md` — composer pasa `held_low_confidence` a `DATA.push` | ✅ listo |
 
 ## Estado de la migración
 
@@ -79,6 +80,15 @@ guardarlo en un lugar de acceso controlado (Drive / tabla Supabase de backup).
 
 3 excepciones venían como texto suelto (data vieja) y quedaron marcadas `_needs_scope_review:true`
 (Every Cloud ×2, Hekaya ×1) — revisar su scope cuando puedas.
+
+## Estado de las fichas (product_fiche)
+
+✅ **Cargadas el 2026-09-06** para los **20 clientes activos** (17 migrados + 3 creados: Happy Fox CA,
+Zola Zola, House of Thalen). **41 líneas de producto** en total, auto-jaladas del listing real
+(Helium10 + catálogo Seller Central), `attributes_absent` conservador. Solo se tocó `product_fiche`;
+roots/competitors/protected_relevant intactos. **2 líneas quedaron `no_fiche`** (re-jalar con
+"actualizar ficha de …" cuando resuelvan): Leefy — Immunity (`B0C6LYYDOY`) y House of Thalen — GLP-1
+(`B0GV4TR6PJ`).
 
 ## Orden de instalación (recomendado)
 
