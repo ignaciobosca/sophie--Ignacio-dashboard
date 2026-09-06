@@ -1,19 +1,12 @@
 ---
 name: daily-negatives-supabase
 description: >
-  PILOT (Supabase) copy of daily-negatives. Para UN cliente: extrae los search terms con
-  clicks y CERO ventas de AYER (t-1) desde AdLabs (Shurq fallback), los pasa por el filtro
-  de relevancia semantica (solo sobreviven los IRRELEVANTES), le asigna a cada uno un nivel
-  de CONFIANZA (high/medium/low) + EVIDENCIA + BASIS usando la FICHA DE PRODUCTO del perfil v2
-  como vara, clasifica cada uno como negative PHRASE o EXACT, y hace UPSERT de la fila del dia a Supabase (tabla
-  dashboard_snapshots, tipo='negatives', una fila por dia) en vez de escribir un JSON local.
-  Lee el config y el perfil de relevancia desde Supabase (tablas clients y
-  relevance_profiles). Dos modos activos: 'run' (default, por cliente → upsert) y 'learn'
-  (escribe los aprendizajes DIRECTO a la tabla relevance_profiles de Supabase). El modo
-  'compose' (master dashboard 4 tabs) NO esta migrado todavia — vive en el composer del
-  master, se migra al final de Fase B. Trigger SOLO con fraseo piloto explicito:
-  "run daily-negatives-supabase for [Brand]", "negativos supabase para [Brand]",
-  "learn supabase para [Brand]".
+  Copia Supabase de daily-negatives. Para UN cliente: extrae search terms de AYER (t-1) con
+  clicks y CERO ventas, deja SOLO los IRRELEVANTES (juicio de relevancia contra la ficha de
+  producto del perfil v2) y a cada uno le asigna CONFIANZA (high/medium/low) + evidencia; hace
+  upsert de la fila del día a dashboard_snapshots. Modos: 'run' (default) y 'learn' (actualiza
+  el perfil en relevance_profiles). Trigger: "negativos supabase para [Brand]",
+  "run daily-negatives-supabase for [Brand]", "learn supabase para [Brand]".
 ---
 
 # Daily Negatives — Per-Client (Master Dashboard, Fase 1)

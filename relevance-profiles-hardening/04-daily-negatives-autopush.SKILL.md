@@ -1,21 +1,13 @@
 ---
 name: daily-negatives-autopush
 description: >
-  El PUENTE automático del negative targeting diario. Toma el snapshot que dejó
-  daily-negatives-supabase (dashboard_snapshots, tipo='negatives') y, SIN selección ni
-  copy-paste, empuja cada candidato irrelevante como negativo a AdLabs, auto-derivando el
-  destino desde el producto/línea del candidato: todos los ad groups ENABLED (SP + SB) que
-  anuncian los ASINs de esa línea, menos Scavenger. Empuja SOLO keywords: en phrase negativiza el
-  ROOT/raíz del snapshot (ej. "re u", no "re u hair serum"); en exact, el término. Los ASINs
-  (términos b0…) NUNCA se auto-negativizan: van a un bucket
-  asins_skipped para revisar a mano. Deja recibo en Supabase (tipo='negatives_push') para
-  auditoría e idempotencia. NUNCA pushea candidatos sin producto resoluble ("General (sin
-  asignar)"): quedan para el dashboard/manual. GATE DE CONFIANZA: solo autopushea candidatos
-  con confidence 'high' o 'medium'; los 'low' quedan retenidos (held_low_confidence) para tu
-  review en el dashboard. Modos: 'run' (default), 'dry-run' y 'approved' (empuja los LOW que
-  vos aprobaste desde el dashboard + los aprende). Trigger: "autopush negatives para [Brand]",
-  "run daily-negatives-autopush for [Brand]", "pushear low aprobados de [Brand]", o una Routine.
-  NO identifica términos ni hace harvesting positivo.
+  Puente automático: toma el snapshot de daily-negatives-supabase y empuja los negativos
+  irrelevantes a AdLabs sin copy-paste, auto-derivando el destino por línea de producto (ad
+  groups ENABLED SP+SB, menos Scavenger). Solo keywords (los ASINs van a revisión manual).
+  GATE: autopushea confianza high/medium; los 'low' quedan para tu aprobación en el dashboard.
+  Deja recibo en Supabase. Modos: 'run' (default), 'dry-run' y 'approved' (pushea + aprende los
+  LOW que aprobaste). Trigger: "autopush negatives para [Brand]", "run daily-negatives-autopush
+  for [Brand]", "pushear low aprobados de [Brand]".
 ---
 
 # Daily Negatives — Autopush (snapshot → AdLabs, automático)
