@@ -19,11 +19,10 @@ Rama: `claude/relevancia-perfiles-negativizacion-vib2ew` · carpeta: `relevance-
 
 > `negative-targeting` y `daily-negatives` (local) NO se tocan (negative-targeting está suspendido).
 
-### 2. Aplicar el patch del template del dashboard (cola de aprobación LOW)
-- Archivo: `05-dashboard.md` (renderer `renderApprovalQueue` + integración con `renderDay`).
-- Va en el template del master en Supabase (`dashboards` id='master').
-- **Hacerlo DESPUÉS de instalar el autopush V2** (si no, la cola sale vacía).
-- Lo puedo aplicar yo en vivo con tu OK (validando el JS antes de publicar).
+### 2. Aplicar el patch del template del dashboard (cola de aprobación LOW) — ✅ HECHO (2026-09-06)
+- Aplicado al template del master en Supabase (`dashboards` id='master') + validado con `node --check`.
+- Se ve en la página en vivo tras el próximo publish del composer (V2.3 ya instalada).
+- Backup del template previo en `public._master_tmpl_bak` (borrar cuando se confirme que renderiza bien).
 
 ### 3. Re-jalar 2 fichas que no resolvieron (`no_fiche`)
 - Leefy — Immunity/Defense Blend (`B0C6LYYDOY`) → posible ASIN desmergeado + pausado en PPC.
