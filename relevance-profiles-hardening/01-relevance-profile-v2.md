@@ -175,7 +175,7 @@ Todo consumidor del perfil debe leer v1 y v2 indistintamente:
 
 - `roots` string `"bamboo"` → `{root:"bamboo", match:"phrase", confidence:"high", basis:"profile", evidence:"(migrado v1)"}`.
 - `competitors` string `"little unicorn"` → `{name:"little unicorn", confidence:"high", basis:"profile", evidence:"(migrado v1)"}`.
-- `protected_relevant` sin `scope` → derivar del `reason`: contiene `"SOLO igualdad"`/`"equality only"` → `equals`; contiene `"todo lo que incluya"` o es raíz de marca/atributo → `contains`; si no se puede decidir → `equals`.
+- `protected_relevant` sin `scope` → derivar replicando el default v1: (1) `reason` con `"SOLO igualdad"`/`"equality only"` → `equals`; (2) `reason` con `"todo lo que incluya"`/`"contención"`/`"cualquier"` → `contains`; (3) sin marcador → **raíz suelta (una sola palabra) → `contains`; descriptor multi-palabra → `equals`**. (Un `protected` que venga como string suelto —data vieja— se parsea: term = lo previo al `[`/`(`, el resto = reason; se marca `_needs_scope_review`.)
 - `product_fiche` ausente → tratarlo como `{items:[]}` (el motor cae a la lógica de hoy hasta que se corra el onboarding/refresh de ficha).
 
 La **migración** (`01-migrate-v1-to-v2.py`) hace esta transformación una vez y de forma persistente;
