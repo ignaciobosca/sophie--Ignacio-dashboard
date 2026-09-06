@@ -131,7 +131,7 @@ def migrate_profile(profile: dict) -> dict:
 
     # change_log: agregar la nota de migración una sola vez.
     log = list(p.get("change_log", []))
-    if not already_v2 and not any(l.startswith(MIGRATION_NOTE[:10]) and "migrado v1→v2" in l for l in log):
+    if not already_v2 and not any(isinstance(l, str) and l.startswith(MIGRATION_NOTE[:10]) and "migrado v1→v2" in l for l in log):
         log.append(MIGRATION_NOTE)
     p["change_log"] = log
 

@@ -68,10 +68,21 @@ sistema **gana confianza con el uso**.
 | 4 | `04-daily-negatives-autopush.SKILL.md` — gate high+medium + MODE=approved | ✅ listo |
 | 5 | `05-dashboard.md` — cola de aprobación LOW: checkboxes + "copiar aprobados" | ✅ listo |
 
+## Estado de la migración
+
+✅ **Migración v1→v2 APLICADA el 2026-09-06** sobre los 17 perfiles de `relevance_profiles` (POD 66).
+Verificado: 17/17 en v2, 0 en v1, todos con `product_fiche` inicializada, counts de roots/competitors/
+protected preservados exactos, scopes derivados (default v1: 1 palabra → contains). Fue **no-destructiva**
+(v2 es superset de v1) e **idempotente**. Backup v1 crudo tomado antes de aplicar; **NO** se commitea acá
+(este repo alimenta un GitHub Pages público y el backup tiene listas de competidores por cliente) —
+guardarlo en un lugar de acceso controlado (Drive / tabla Supabase de backup).
+
+3 excepciones venían como texto suelto (data vieja) y quedaron marcadas `_needs_scope_review:true`
+(Every Cloud ×2, Hekaya ×1) — revisar su scope cuando puedas.
+
 ## Orden de instalación (recomendado)
 
-1. **Migrar los perfiles** (#1): correr `01-migrate-v1-to-v2.py` en DRY-RUN → validar 1–2 perfiles reales
-   conmigo → APPLY. (El motor lee v1 y v2, así que esto no es bloqueante, pero conviene primero.)
+1. ~~**Migrar los perfiles** (#1)~~ — ✅ HECHO (ver arriba).
 2. **Reemplazar los 3 SKILL.md** (#2, #3, #4) por sus versiones nuevas y re-sincronizar. Son 1:1.
 3. **Cargar la ficha**: correr `client-onboarding` (o *"actualizar ficha de [producto] de [Brand]"*) para
    un cliente piloto → verificar que `product_fiche` quedó en `relevance_profiles`.
