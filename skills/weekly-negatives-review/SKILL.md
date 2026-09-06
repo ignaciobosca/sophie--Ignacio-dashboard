@@ -170,6 +170,15 @@ confianza desc. Si `proposal` está vacía → todo sano, reportá y saltá al S
 3. **Al confirmar, archivá** los seleccionados en AdLabs. **Mecánica confirmada** (`adlabs://docs/actions/negative_targeting`):
    necesitás una reference row-level SOLO con los negativos a archivar (con columnas `id`,`match_type_raw`,`campaign_id`).
    Armala re-fetcheando `negative_targeting` filtrado por `NEGATIVE_TARGET_ID IN [<ids seleccionados>]` (reference fresca), y:
+   > ⚠️ **BUG DE ADLABS — filtro de texto multi-valor (verificado 2026-09-06):** el filtro
+   > `NEGATIVE_TARGETING_EXACT_MATCH` con un array de **varios** valores **solo matchea el PRIMERO** y descarta
+   > el resto EN SILENCIO (ej. `["aleppo soap","turkish soap"]` devolvió solo aleppo soap; turkish soap tenía 105
+   > negativos y no aparecieron). **Nunca busques varios términos en una sola llamada de EXACT_MATCH.** Para
+   > localizar negativos por texto: (a) **un término por llamada** con `NEGATIVE_TARGETING_EXACT_MATCH` de un solo
+   > valor, o (b) `NEGATIVE_TARGETING LIKE "<token>"` + `query` client-side (`WHERE lower(targeting)=...`, SELECT *
+   > para conservar `id`/`match_type_raw`/`campaign_id`). **Re-verificá el conteo por término** y, cuando el término
+   > es un producto core (ej. un phrase-root ancho), chequeá también variantes con LIKE. Un término saltado = un
+   > negativo que sigue bloqueando tráfico relevante.
    ```
    update_entities(entity_type="negative_targeting", team_id, profile_id, chat_session_id,
      action="update_status", status="ARCHIVED", reference=<ref de los seleccionados>,
