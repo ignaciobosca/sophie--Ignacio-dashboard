@@ -19,10 +19,15 @@ Rama: `claude/relevancia-perfiles-negativizacion-vib2ew` · carpeta: `relevance-
 
 > `negative-targeting` y `daily-negatives` (local) NO se tocan (negative-targeting está suspendido).
 
-### 2. Aplicar el patch del template del dashboard (cola de aprobación LOW) — ✅ HECHO (2026-09-06)
-- Aplicado al template del master en Supabase (`dashboards` id='master') + validado con `node --check`.
-- Se ve en la página en vivo tras el próximo publish del composer (V2.3 ya instalada).
+### 2. Patch del template del dashboard — ✅ HECHO (2026-09-06)
+Aplicado al template del master en Supabase (`dashboards` id='master'), script completo validado con `node --check`. Se ve en la página en vivo tras el próximo publish del composer (V2.3 instalada). Incluye:
+- Cola **Low confidence** (checkboxes + Copy approved).
+- Cola **Assign line & push** para los held (dropdown de línea por término + Copy assigned).
+- **Mini-tutorial** plegable "How this works" en el tab Push.
 - Backup del template previo en `public._master_tmpl_bak` (borrar cuando se confirme que renderiza bien).
+
+### 2b. Reinstalar `daily-negatives-autopush` (actualizado) — ⏳ Vos
+El `MODE=approved` ahora también empuja **held con la línea asignada** (lee la 4ta columna = línea) y acepta el trigger genérico *"pushear aprobados de [Brand]"*. Reemplazá con `04-daily-negatives-autopush.SKILL.md`.
 
 ### 3. Re-jalar 2 fichas que no resolvieron (`no_fiche`)
 - Leefy — Immunity/Defense Blend (`B0C6LYYDOY`) → posible ASIN desmergeado + pausado en PPC.

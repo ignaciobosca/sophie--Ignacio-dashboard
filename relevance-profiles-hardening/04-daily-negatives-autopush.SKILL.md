@@ -6,8 +6,9 @@ description: >
   groups ENABLED SP+SB, menos Scavenger). Solo keywords (los ASINs van a revisión manual).
   GATE: autopushea confianza high/medium; los 'low' quedan para tu aprobación en el dashboard.
   Deja recibo en Supabase. Modos: 'run' (default), 'dry-run' y 'approved' (pushea + aprende los
-  LOW que aprobaste). Trigger: "autopush negatives para [Brand]", "run daily-negatives-autopush
-  for [Brand]", "pushear low aprobados de [Brand]".
+  LOW que aprobaste, y pushea held con la línea que le asignaste). Trigger: "autopush negatives
+  para [Brand]", "run daily-negatives-autopush for [Brand]", "pushear aprobados de [Brand]",
+  "pushear low aprobados de [Brand]".
 ---
 
 # Daily Negatives — Autopush (snapshot → AdLabs, automático)
@@ -325,22 +326,30 @@ automatización o revisar el destino sin tocar Amazon.
 
 ---
 
-## MODE = approved  (empujar los LOW que Nacho aprobó + aprenderlos)
+## MODE = approved  (empujar lo que Nacho aprobó desde el dashboard + aprenderlo)
 
-El carril de vuelta del gate: los candidatos `low` que el gate retuvo aparecen en el dashboard con checkboxes;
-Nacho tilda los que aprueba, copia el bloque y lo pega acá. **Aprobar = pushear hoy + aprender** (un comando).
+El carril de vuelta del dashboard. Cubre **dos casos**, con el MISMO comando y formato:
+- **LOW aprobados:** candidatos `low` que el gate retuvo (sección "Low confidence"). Nacho tilda y copia.
+- **Held asignados:** keywords retenidos por producto no resoluble ("General (sin asignar)") a los que
+  Nacho ahora **asigna una línea** en el dashboard (sección "Assign line & push") y copia.
+**Aprobar = pushear hoy + aprender** (un comando).
 
-**Trigger:** *"pushear low aprobados de [Brand]"*, *"aprobar estos negativos de [Brand]"* + el bloque pegado
-del dashboard (líneas `term ⇥ match ⇥ reason [⇥ product]`, el mismo formato del learn).
+**Trigger:** *"pushear aprobados de [Brand]"*, *"pushear low aprobados de [Brand]"*, *"aprobar estos negativos
+de [Brand]"* + el bloque pegado del dashboard: líneas `term ⇥ match ⇥ reason ⇥ product/línea` (la 4ta columna
+es la **línea destino**; para LOW suele venir ya con su línea, para held es la que Nacho eligió en el dropdown).
 
 1. **Resolver cliente + config** (Step 1) y **leer el snapshot del día** (Step 2). Del snapshot tomá el
-   contexto completo de cada término aprobado (match, root, product, origin_campaign/ad_group, evidence) matcheando
-   por `term` contra `day.candidates` (y contra `held_low_confidence` del recibo si ya existe). Si un término
-   pegado no está en el snapshot de hoy → usá lo que trae la línea pegada (match/reason) y `product` si vino;
-   si no hay product resoluble, aplica la regla 1 (retener, no pushear) igual que siempre.
-2. **Redes de seguridad SÍ, gate NO.** Corré la clasificación del Step 4 **items 1–6** (marca propia,
-   protected_relevant, ASIN, char especial, producto no resoluble, idempotencia) — esas siguen valiendo.
-   **Saltá el item 7 (gate de confianza):** estos términos ya los aprobó Nacho, van aunque sean `low`.
+   contexto de cada término (match, root, origin_campaign/ad_group, evidence) matcheando por `term` contra
+   `day.candidates`, `held_low_confidence` y `held` del recibo. **La 4ta columna pegada (product/línea) MANDA:**
+   si viene, es la línea destino y **override** el `product` del snapshot (así un held que estaba en "General"
+   ahora rutea a la línea que Nacho eligió). Si un término pegado no está en el snapshot → usá match/reason/línea
+   de la línea pegada. Si NO hay línea (4ta columna vacía) y el snapshot tampoco la resuelve → aplica la regla 1
+   (retener), no pushees a ciegas.
+2. **Redes de seguridad SÍ, gate NO.** Corré la clasificación del Step 4 **items 1–5** (marca propia,
+   protected_relevant, ASIN, char especial, idempotencia) — esas siguen valiendo. **Saltá el gate de confianza
+   (item 7).** La retención por producto no resoluble (item 5 del Step 4 original / regla 1) **NO aplica cuando
+   la 4ta columna trae una línea válida** (∈ `line_asins`): ese es justamente el caso held-asignado. Si la línea
+   pegada no matchea ninguna de `line_asins` → retener y reportar (no inventar destino).
 3. **Pushear** con el mismo motor: Step 4b (ruteo por línea) → Step 5 (previews, solo keywords) → Step 6
    (resumen + apply). Mismo `note`, agregando `— APROBADO MANUAL` para el audit log.
 4. **Aprender (obligatorio en este modo).** Por cada término aprobado, aplicá el **`MODE=learn` de
@@ -348,8 +357,9 @@ del dashboard (líneas `term ⇥ match ⇥ reason [⇥ product]`, el mismo forma
    `root` como objeto `{confidence:"high", basis:"profile", evidence:"aprobado por Nacho desde el dashboard <fecha>", added_by:"approved", ...}`; competidor/licensed → a `competitors`. Migrar v1→v2 si hace falta.
    Así la próxima corrida lo toma como `basis=profile`/`high` y se autopushea solo. (Si Nacho marcó un término
    como "aprobar solo hoy, no aprender" en el bloque, saltá el learn para ese.)
-5. **Recibo** (Step 7) con `summary.mode:"approved"`; en `applied[]` marcá `origin:"approved_low"`. Confirmá:
-   `Aprobados {brand} — {fecha}: {created} negativos creados ({n} términos), {learned} aprendidos al perfil, {held}/{dropped} retenidos/descartados.`
+5. **Recibo** (Step 7) con `summary.mode:"approved"`; en `applied[]` marcá `origin:"approved_low"` (LOW) u
+   `origin:"approved_held"` (held con línea asignada). Confirmá:
+   `Aprobados {brand} — {fecha}: {created} negativos creados ({n} términos: {n_low} low + {n_held} held asignados), {learned} aprendidos al perfil, {held}/{dropped} retenidos/descartados.`
 
 ---
 
