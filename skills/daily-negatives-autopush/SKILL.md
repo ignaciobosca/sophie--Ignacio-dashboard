@@ -1,26 +1,28 @@
 ---
 name: daily-negatives-autopush
 description: >
-  El PUENTE automático del negative targeting diario. Toma el snapshot que dejó
-  daily-negatives-supabase (dashboard_snapshots, tipo='negatives') y, SIN selección ni
-  copy-paste, empuja cada candidato irrelevante como negativo a AdLabs, auto-derivando el
-  destino desde el producto/línea del candidato: todos los ad groups ENABLED (SP + SB) que
-  anuncian los ASINs de esa línea, menos Scavenger. Empuja SOLO keywords: en phrase negativiza el
-  ROOT/raíz del snapshot (ej. "re u", no "re u hair serum"); en exact, el término. Los ASINs
-  (términos b0…) NUNCA se auto-negativizan: van a un bucket
-  asins_skipped para revisar a mano. Deja recibo en Supabase (tipo='negatives_push') para
-  auditoría e idempotencia. NUNCA pushea candidatos sin producto resoluble ("General (sin
-  asignar)"): quedan para el dashboard/manual. Modos: 'run' (default) y 'dry-run'. Trigger:
-  "autopush negatives para [Brand]", "run daily-negatives-autopush for [Brand]", o una Routine.
-  NO identifica términos ni hace harvesting positivo.
+  Puente automático: toma el snapshot de daily-negatives-supabase y empuja los negativos
+  irrelevantes a AdLabs sin copy-paste, auto-derivando el destino por línea de producto (ad
+  groups ENABLED SP+SB, menos Scavenger). Solo keywords (los ASINs van a revisión manual).
+  GATE: autopushea confianza high/medium; los 'low' quedan para tu aprobación en el dashboard.
+  Deja recibo en Supabase. Modos: 'run' (default), 'dry-run' y 'approved' (pushea + aprende los
+  LOW que aprobaste, y pushea held con la línea que le asignaste). Trigger: "autopush negatives
+  para [Brand]", "run daily-negatives-autopush for [Brand]", "pushear aprobados de [Brand]",
+  "pushear low aprobados de [Brand]".
 ---
 
 # Daily Negatives — Autopush (snapshot → AdLabs, automático)
 
-**Versión:** V1.0 (2026-08-30). Es el eslabón que faltaba entre **identificar** y **aplicar**.
-`daily-negatives-supabase` ya decide QUÉ negativizar (y con qué match) y lo deja en el snapshot
-del día. Este skill lo **empuja solo**: deriva el destino desde el producto de cada candidato y
-crea + aplica los negativos vía el MCP de AdLabs, sin que toques el dashboard.
+**Versión:** V2.0 (2026-09-06) — gate de confianza + MODE=approved. Sube de V1.0. Es el eslabón entre
+**identificar** y **aplicar**. `daily-negatives-supabase` (V2.0) ya decide QUÉ negativizar, con qué match
+y con qué **confianza** (`high`/`medium`/`low`), y lo deja en el snapshot. Este skill lo **empuja solo**,
+pero ahora **con un gate**: solo autopushea `high`+`medium`; los `low` quedan retenidos
+(`held_low_confidence`) para que Nacho los revise en el dashboard. Cuando Nacho aprueba LOW desde el
+dashboard, corre en **`MODE=approved`**: empuja esos términos (salteando el gate, porque ya los aprobó)
+con el mismo motor + **los aprende** (quedan en el perfil → la próxima vez entran como `high`).
+
+**Historial:** V1.0 (2026-08-30) — puente snapshot→AdLabs, auto-ruteo por línea, recibo + idempotencia,
+modos run/dry-run.
 
 **Respondé a Nacho en español.**
 
@@ -71,6 +73,12 @@ crea + aplica los negativos vía el MCP de AdLabs, sin que toques el dashboard.
    `ą`, `ł`, `ñ`, emojis… — **o** símbolos como coma, `/`, `+`, `%`, `"`), Amazon lo rechaza → **NO se pushea.**
    Sumalo a `dropped[]` con `reason:"special_char"` para que quede registrado. Ej.: `kofeiną, kopexilem`
    (coma + `ą`) → no negable. (Hyphen `-`, apóstrofo `'` y `&` sí se permiten: son comunes en keywords reales.)
+12. **GATE DE CONFIANZA (V2.0 — pedido de Nacho).** Solo se autopushean los candidatos con
+   `confidence ∈ {"high","medium"}`. Los `confidence == "low"` **NO se pushean**: van a
+   `held_low_confidence[]` para el dashboard (Nacho decide con la `evidence` al lado). Retrocompat: un
+   candidato de snapshot viejo **sin** `confidence` se trata como `high` (comportamiento V1). El gate se
+   aplica en Step 4 (después de las redes de seguridad, antes de agrupar por línea). En `MODE=approved`
+   el gate se **saltea** para los términos que Nacho aprobó (él ya los validó).
 
 ---
 
@@ -113,6 +121,15 @@ where lower(brand)=lower('<requested_brand>')
 ```
 Zero rows / `config` null → STOP y listá `select brand from public.clients where active`. Tomá `cfg = config`.
 Requeridos: `brand_name`, `adlabs_team_id`, `adlabs_profile_id`, `managed_asins`. Multi-marketplace = 1 corrida por config.
+
+> **GATE DE PAUSA POR CLIENTE (`autopush_paused`).** Si `cfg.autopush_paused == true` → **NO pushees nada**
+> para este cliente. Es una pausa que frena **solo el autopush**: el identificador (`daily-negatives-supabase`)
+> sigue proponiendo, el dashboard y el weekly review siguen normales. Escribí un recibo liviano a Supabase
+> (`tipo='negatives_push'`, fecha=HOY-ART) con `summary.mode='paused'`, `applied/held/asins_skipped/dropped = []`
+> y una nota (`"autopush en pausa para {brand} (config.autopush_paused=true)"`), así el tab Push lo muestra
+> como "en pausa" en vez de vacío. Reportá `Autopush EN PAUSA para {brand} — no se aplicó nada.` y terminá.
+> En `MODE=approved` (Nacho aprobó LOW puntuales desde el dashboard) el gate **se ignora**: una aprobación
+> manual explícita manda sobre la pausa. Para pausar/reanudar, ver la sección "Pausar el autopush por cliente".
 
 > **⚠️ Diagnóstico honesto de config vs. error de AdLabs (aprendido 2026-08-31, caso BloomTrail):**
 > Chequeá los requeridos **contra el config de Supabase** y reportá exactamente lo que ves:
@@ -193,6 +210,14 @@ Recorré `candidates` y clasificá cada uno **en este orden** (el primero que ap
    `origin_ad_group` contra los nombres de línea de `line_asins`; si no hay match claro → `suggested_line: null`.
    NUNCA pushees por la sugerencia — es solo para el informe.
 6. **Idempotencia:** si `(push_text, match, line)` ∈ `already_pushed` → saltear (ya aplicado hoy para esa línea).
+7. **Gate de confianza (regla 12) — SOLO en MODE=run/dry-run:** mirá `candidate.confidence`:
+   - `high` o `medium` → sigue al push.
+   - `low` → **NO pushear.** Sumalo a `held_low_confidence[]` con TODO el contexto para el dashboard:
+     `term, clicks, spend, match, root, kind, product, confidence, evidence, reason, origin_campaign, origin_ad_group`.
+     Es lo que el dashboard muestra con checkboxes para que Nacho apruebe (→ vuelve por `MODE=approved`).
+   - **sin** `confidence` (snapshot viejo) → tratar como `high` (comportamiento V1, no romper cuentas con snapshots previos).
+   En **MODE=approved** este gate NO corre (los términos ya vienen aprobados por Nacho).
+
 Los keywords que sobreviven se agrupan por **línea de producto** (`product`) → `push_groups[linea] = {phrase[], exact[]}`
 (**sin ASINs** — nunca), donde cada lista tiene los `push_text` **deduplicados** (case-insensitive):
 - `phrase[]` = roots únicos de los candidatos phrase de esa línea (ej. `re u hair serum` + `re u serum` → un solo `re u`).
@@ -241,6 +266,8 @@ Imprimí, por línea, el destino resuelto y los conteos antes de aplicar. Ejempl
 > - Línea **Body Glue** → 3 ad groups · 2 kw EXACT × 3 = 6 (preview #c)
 > - **ASINs (no auto-negados):** 3 términos b0… → quedan para revisar a mano en el informe.
 > - **Retenidos (no pusheados):** 4 keywords sin producto resoluble → quedan para el dashboard.
+> - **Baja confianza (no pusheados — gate):** 6 keywords `low` → van al dashboard con checkboxes para tu aprobación.
+>   Confianza pusheada: 12 high · 5 medium.
 
 **Si modo = `dry-run`:** parás acá. Mostrá los links "View in AdLabs" y los conteos. No apliques.
 
@@ -257,14 +284,18 @@ Construí `datos` schema `negatives-push-v1` y upserteá:
 { "schema":"negatives-push-v1", "generated_at_iso":"<ISO ART>",
   "brand":"<brand_name>", "marketplace":"US", "currency_prefix":"$",
   "date_iso":"<HOY-ART>", "data_window":"<ayer, del snapshot>",
-  "summary":{"applied_terms":N,"created":N,"skipped_existing":N,"held":N,"asins_skipped":N,"dropped":N,
-             "held_spend":F,"asins_spend":F,"ad_groups_touched":N,"lines":N},
+  "summary":{"applied_terms":N,"created":N,"skipped_existing":N,"held":N,"held_low_confidence":N,"asins_skipped":N,"dropped":N,
+             "held_spend":F,"low_confidence_spend":F,"asins_spend":F,"ad_groups_touched":N,"lines":N,
+             "confidence_pushed":{"high":N,"medium":N}},
   "applied":[{"term":"<push_text: root en phrase / término en exact>","source_terms":["<término(s) original(es)>"],
               "clicks":N,"spend":F,"match":"phrase|exact","kind":"keyword",
               "line":"...","ad_groups":N,"created":N,"skipped":N,"preview_id":"..."}],
   "held":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact","kind":"keyword",
            "product":"General (sin asignar)","reason":"General (sin asignar) | sin ad groups ENABLED | ...",
            "origin_campaign":"...","origin_ad_group":"...","suggested_line":"<linea>|null"}],
+  "held_low_confidence":[{"term":"...","clicks":N,"spend":F,"match":"phrase|exact","root":"...","kind":"keyword",
+           "product":"<linea/parent>","confidence":"low","evidence":"<hecho>","reason":"...",
+           "origin_campaign":"...","origin_ad_group":"..."}],
   "asins_skipped":[{"term":"b0xxxxxxxx","clicks":N,"spend":F,"kind":"asin","product":"<linea|General>",
                     "origin_campaign":"...","origin_ad_group":"...","reason":"ASIN - no auto-negado (regla de Nacho)"}],
   "dropped":[{"term":"...","reason":"own_brand | protected_relevant | special_char | limit_violation"}] }
@@ -282,7 +313,7 @@ on conflict (cliente, tipo, fecha) do update set datos = excluded.datos, actuali
 > **Merge en re-run:** si ya había recibo hoy, MERGEá `applied[]` (no lo pises) — sumá solo lo nuevo de este run.
 
 Confirmá:
-`Autopush {brand} — {fecha}: {created} keyword-negatives creados en {ad_groups_touched} ad groups ({lines} líneas), {skipped_existing} ya existían, {asins_skipped} ASINs no auto-negados (para revisar), {held} retenidos, {dropped} descartados.`
+`Autopush {brand} — {fecha}: {created} keyword-negatives creados en {ad_groups_touched} ad groups ({lines} líneas) [{high} high / {medium} medium], {skipped_existing} ya existían, {asins_skipped} ASINs no auto-negados (para revisar), {held} retenidos, {held_low_confidence} en baja confianza (para aprobar en el dashboard), {dropped} descartados.`
 
 ---
 
@@ -304,6 +335,43 @@ automatización o revisar el destino sin tocar Amazon.
 
 ---
 
+## MODE = approved  (empujar lo que Nacho aprobó desde el dashboard + aprenderlo)
+
+El carril de vuelta del dashboard. Cubre **dos casos**, con el MISMO comando y formato:
+- **LOW aprobados:** candidatos `low` que el gate retuvo (sección "Low confidence"). Nacho tilda y copia.
+- **Held asignados:** keywords retenidos por producto no resoluble ("General (sin asignar)") a los que
+  Nacho ahora **asigna una línea** en el dashboard (sección "Assign line & push") y copia.
+**Aprobar = pushear hoy + aprender** (un comando).
+
+**Trigger:** *"pushear aprobados de [Brand]"*, *"pushear low aprobados de [Brand]"*, *"aprobar estos negativos
+de [Brand]"* + el bloque pegado del dashboard: líneas `term ⇥ match ⇥ reason ⇥ product/línea` (la 4ta columna
+es la **línea destino**; para LOW suele venir ya con su línea, para held es la que Nacho eligió en el dropdown).
+
+1. **Resolver cliente + config** (Step 1) y **leer el snapshot del día** (Step 2). Del snapshot tomá el
+   contexto de cada término (match, root, origin_campaign/ad_group, evidence) matcheando por `term` contra
+   `day.candidates`, `held_low_confidence` y `held` del recibo. **La 4ta columna pegada (product/línea) MANDA:**
+   si viene, es la línea destino y **override** el `product` del snapshot (así un held que estaba en "General"
+   ahora rutea a la línea que Nacho eligió). Si un término pegado no está en el snapshot → usá match/reason/línea
+   de la línea pegada. Si NO hay línea (4ta columna vacía) y el snapshot tampoco la resuelve → aplica la regla 1
+   (retener), no pushees a ciegas.
+2. **Redes de seguridad SÍ, gate NO.** Corré la clasificación del Step 4 **items 1–5** (marca propia,
+   protected_relevant, ASIN, char especial, idempotencia) — esas siguen valiendo. **Saltá el gate de confianza
+   (item 7).** La retención por producto no resoluble (item 5 del Step 4 original / regla 1) **NO aplica cuando
+   la 4ta columna trae una línea válida** (∈ `line_asins`): ese es justamente el caso held-asignado. Si la línea
+   pegada no matchea ninguna de `line_asins` → retener y reportar (no inventar destino).
+3. **Pushear** con el mismo motor: Step 4b (ruteo por línea) → Step 5 (previews, solo keywords) → Step 6
+   (resumen + apply). Mismo `note`, agregando `— APROBADO MANUAL` para el audit log.
+4. **Aprender (obligatorio en este modo).** Por cada término aprobado, aplicá el **`MODE=learn` de
+   `daily-negatives-supabase`** (upsert a `relevance_profiles`, schema v2): `match=phrase` → agregar/confirmar
+   `root` como objeto `{confidence:"high", basis:"profile", evidence:"aprobado por Nacho desde el dashboard <fecha>", added_by:"approved", ...}`; competidor/licensed → a `competitors`. Migrar v1→v2 si hace falta.
+   Así la próxima corrida lo toma como `basis=profile`/`high` y se autopushea solo. (Si Nacho marcó un término
+   como "aprobar solo hoy, no aprender" en el bloque, saltá el learn para ese.)
+5. **Recibo** (Step 7) con `summary.mode:"approved"`; en `applied[]` marcá `origin:"approved_low"` (LOW) u
+   `origin:"approved_held"` (held con línea asignada). Confirmá:
+   `Aprobados {brand} — {fecha}: {created} negativos creados ({n} términos: {n_low} low + {n_held} held asignados), {learned} aprendidos al perfil, {held}/{dropped} retenidos/descartados.`
+
+---
+
 ## Scheduling (Routines de nube — las crea Nacho, NO este skill)
 - **Feeder autopush — batches por OFFSET** (mismo patrón que las Routines "Daily Negatives"): una Routine
   por offset, cada una procesa 5 clientes (`select brand from public.clients where active=true order by brand
@@ -322,6 +390,7 @@ automatización o revisar el destino sin tocar Amazon.
 ## Edge cases
 | Situación | Comportamiento |
 |---|---|
+| `cfg.autopush_paused == true` | Pausa por cliente: NO pushea. Escribe recibo `summary.mode='paused'` y termina. El identificador/dashboard/weekly review siguen. (`MODE=approved` ignora la pausa.) |
 | No hay snapshot de negatives hoy | STOP suave, no pushea. "Corré daily-negatives-supabase primero." |
 | Snapshot con candidates:[] | Nada que pushear. Fin limpio. |
 | Candidato `kind=="asin"` (término b0…) | NUNCA se pushea (regla 10). Va a `asins_skipped[]` para revisar a mano. |
@@ -336,7 +405,39 @@ automatización o revisar el destino sin tocar Amazon.
 | Búsqueda **pelada** = término protegido por igualdad (`term == turkish`) | Descartar (`protected_relevant`). Nunca se niega el término relevante solo. |
 | Keyword con caracteres especiales (no-ASCII/coma/símbolos) | NO negable (regla 11). `dropped` con `reason:"special_char"`. |
 | Ad group de product targeting en el set CONTAINS_ASINS | AdLabs saltea solo el keyword-negative ahí ("ad group targets products"). Contar los `skipped` del preview. |
+| Candidato `confidence=="low"` | NO se autopushea (gate, regla 12). Va a `held_low_confidence[]` para el dashboard. Vuelve por `MODE=approved`. |
+| Candidato sin `confidence` (snapshot viejo) | Tratar como `high` → se pushea (no romper cuentas con snapshots pre-V2). |
+| MODE=approved: término aprobado que cae en protected/own-brand/ASIN/special-char | Las redes de seguridad SÍ siguen valiendo — se descarta/retiene igual (el gate es lo único que se saltea). |
+| MODE=approved: término marcado "no aprender" | Se pushea hoy pero NO se agrega al perfil. |
 | Re-run el mismo día | Idempotente: saltea `(term,match)` ya en el recibo; mergea lo nuevo. |
 | Keyword viola límites (80/4/10) | Se saltea en el apply. Avisar cuál. |
 | AdLabs reference expiró | Re-fetcheá el ad_group (las references expiran con la sesión). |
 | Multi-marketplace | 1 corrida por config; el brand ya distingue US/CA. |
+
+---
+
+## Pausar el autopush por cliente
+
+Para **pausar solo el push** de un cliente (el identificador diario sigue proponiendo, el dashboard y el
+weekly review siguen normales), se setea el flag `autopush_paused` en su `config` de Supabase. **No** uses
+`active=false` — eso apaga TODA la automatización del cliente (daily check, identificador, dashboard, restock),
+no solo el push.
+
+**Pausar** (frena el autopush desde la próxima corrida):
+```sql
+update public.clients
+set config = jsonb_set(config, '{autopush_paused}', 'true'::jsonb)
+where lower(brand) = lower('<Brand>');
+```
+**Reanudar:**
+```sql
+update public.clients
+set config = jsonb_set(config, '{autopush_paused}', 'false'::jsonb)
+where lower(brand) = lower('<Brand>');
+```
+(o `config = config - 'autopush_paused'` para sacar el flag del todo).
+
+Multi-marketplace: si el cliente tiene varias configs (US/CA), seteá el flag en la fila que quieras pausar.
+Mientras está en pausa, el tab Push muestra ese cliente como **"en pausa"** (recibo `mode='paused'`), así queda
+claro que no es un error. Trigger conversacional equivalente: **"pausá el autopush de [Brand]"** /
+**"reanudá el autopush de [Brand]"**.
