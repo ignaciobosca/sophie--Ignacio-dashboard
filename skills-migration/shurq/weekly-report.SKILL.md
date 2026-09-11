@@ -11,11 +11,13 @@ description: >
   Single-brand mode — for multi-marketplace clients (US + CA) generate one report per marketplace.
 ---
 
-# Weekly Report Skill — Single-Call (V4 · SHURQ edition)
+# Weekly Report Skill — Single-Call (V4.1 · SHURQ edition)
 
-**Versión actual:** V4 (2026-09-11) — migrada de AdLabs a **SHURQ**. Misma estructura de reporte y
+**Versión actual:** V4.1 (2026-09-11) — migrada de AdLabs a **SHURQ**. Misma estructura de reporte y
 misma lógica de rankings que V3; lo único que cambió es la **capa de datos** (AdLabs → SHURQ) y la
 **resolución de cuenta** (`adlabs_team_id`/`adlabs_profile_id` → `shurq_account_id` + `mkp_id`).
+V4.1 afina el manejo de Sessions/Total CVR ante el gap de Sales & Traffic de SHURQ (omitir del
+reporte al cliente + flag interno) y explicita ClickUp/Slack como inputs obligatorios de Next Steps.
 
 **Historial:** V3 (2026-08-16) — data pulled live from AdLabs, zero local files, zero Excel.
 
@@ -203,12 +205,20 @@ has_org = total_sales>0                                 # datos orgánicos/marke
 # PPC / mixtas → None si not has_ppc ; orgánicas → None si not has_org
 ```
 
-> **⚠️ Caveat SHURQ — Total Sessions / Total CVR:** en algunas cuentas `get_sales_traffic` devuelve
-> `sessions: 0` (el reporte Sales & Traffic no está poblado en la fuente PG). Si **toda** la ventana
-> viene con `sessions==0`, tratá `total_sessions` y `total_cvr` como **no disponibles**: mostralos
-> como `N/A`, **no los rankees**, y omití la línea de sesiones en el análisis en vez de inventar un
-> proxy. (V3/AdLabs las derivaba de `org_traffic + clicks`; SHURQ usa las sesiones reales de Amazon,
-> mejores cuando existen, ausentes cuando la fuente no las trae.) Si vienen pobladas, usalas normal.
+> **⚠️ Caveat SHURQ — Total Sessions / Total CVR (gap del pipeline, confirmado 2026-09-11):**
+> hoy `get_sales_traffic` devuelve `sessions: 0` **y** `page_views: 0` (y browser/mobile) para
+> **todas** las cuentas testeadas — es un gap GLOBAL de la ingesta Sales & Traffic en la fuente PG,
+> no algo por cuenta. `revenue`/`orders`/`units` de la misma tabla SÍ vienen bien. **`page_views` NO
+> sirve como proxy** de Sessions (también está en 0), y aunque tuviera dato, Page Views ≠ Sessions.
+> **Manejo (decidido por Nacho): OMITIR + avisar internamente.**
+> - Si `total_sessions` es None en toda la ventana (o solo la reporting week): **NO** muestres las
+>   líneas *Total Sessions* ni *Total CVR* en el reporte al cliente (nada de "N/A" a la vista del
+>   cliente), y **no** las rankees ni las uses en el análisis.
+> - En el **hand-off interno a Nacho** (el resumen que le devolvés en el chat cuando corrés el skill,
+>   NO el mensaje de Slack), incluí siempre una línea: `⚠️ Sessions/Total CVR no disponibles esta
+>   semana (gap del pipeline SHURQ Sales & Traffic).` Así Nacho sabe por qué faltan.
+> - Cuando el dev arregle la ingesta y `sessions` vuelva >0, el skill las muestra normal otra vez sin
+>   ningún cambio (la lógica ya es condicional). No hay que tocar nada.
 
 ```
 rw = weekly_data[rw_start]  (o la semana completa más reciente si falta)
@@ -299,8 +309,12 @@ Target language: mencioná `acos_target`/`tacos_target` cuando el KPI está at/b
 
 ## Step 4: Build Next Steps inputs — Data analysis + ClickUp + Slack
 
-Idéntico a V3. Next Steps salen de **tres fuentes; el análisis de datos es obligatorio** — nunca
-armes Next Steps solo de ClickUp + Slack.
+Idéntico a V3. Next Steps salen de **tres fuentes, y las tres se jalan SIEMPRE en cada corrida:**
+(4a) tu análisis de datos — **obligatorio**, es la espina dorsal; (4b) tareas abiertas de **ClickUp**;
+(4c) contexto reciente del canal interno de **Slack**. ClickUp y Slack son **inputs obligatorios a
+intentar** en cada run — no los saltees. Si alguno no devuelve nada (folder inexistente, canal
+ilegible), seguí con lo que haya y **avisalo en el hand-off interno** (Step 6), nunca bloquees el
+reporte. Nunca armes Next Steps solo de datos si ClickUp/Slack tenían señales.
 
 ### 4a. Data-driven recommendations (MANDATORY — las generás vos)
 Razoná sobre la reporting week **y las semanas previas** (no solo esta). Mirá: WoW moves & 3-week
@@ -380,10 +394,11 @@ Bold a las cifras clave. Conectá los puntos (paid vs organic, efficiency vs vol
 [organic health, halo signal.]
 
 *Total Sessions – [value] ([WoW %]):*
-[traffic level + trend. Si sessions no disponibles en SHURQ → omití esta línea, no escribas N/A raro.]
+[traffic level + trend. **Si sessions no disponibles en SHURQ → NO incluyas esta línea en absoluto**
+(ni "N/A"); el cliente no debe ver el bache. Ver caveat.]
 
 *Total CVR – [value] ([WoW %]):*
-[conversion quality, traffic mix. Idem: omití si no hay sessions.]
+[conversion quality, traffic mix. **Idem: omití la línea entera si no hay sessions.**]
 
 *Performance Analysis*
 [Un párrafo, 3–5 oraciones. 2–3 rankings notables. Frame con las data-aware windows:
@@ -425,6 +440,12 @@ Siempre rank/count nominal ("rank 12 of the last 14 weeks"). Nunca %, nunca "all
   `slack_send_message_draft` (un draft puede fallar si alguien está componiendo; el post interno es
   seguro, se revisa antes de llegar al cliente).
 - Sin canal → output inline a Nacho con nota. Multi-marketplace → un mensaje por marketplace.
+- **Hand-off interno a Nacho (en el chat, NO en Slack):** después de postear, devolvele a Nacho un
+  cierre corto con: dónde posteó (canal), la semana reporteada, y **cualquier KPI que quedó afuera**.
+  En particular, si Sessions/Total CVR se omitieron, incluí la línea:
+  `⚠️ Sessions/Total CVR no disponibles esta semana (gap del pipeline SHURQ Sales & Traffic) — omitidas del reporte al cliente.`
+  Mencioná también si ClickUp o Slack no devolvieron contexto (para que sepa por qué los Next Steps
+  salieron solo de datos).
 
 ---
 
@@ -439,7 +460,7 @@ Siempre rank/count nominal ("rank 12 of the last 14 weeks"). Nunca %, nunca "all
 | Missing `dashboard_url` | Omit the "full data dashboard HERE" line |
 | Missing `team_took_over_date` | Fall back to `onboarding_date`, else last-14-weeks window |
 | Missing `acos_target`/`tacos_target` | Skip target language for that KPI |
-| **SHURQ `get_sales_traffic` sessions == 0 toda la ventana** | Total Sessions / Total CVR = no disponibles: N/A, no rankear, omitir esas líneas |
+| **SHURQ `get_sales_traffic` sessions == 0 (gap global actual)** | OMITIR las líneas Total Sessions y Total CVR del reporte al cliente (sin "N/A"), no rankear; flag en el hand-off interno a Nacho. `page_views` tampoco sirve (también 0). Vuelve solo cuando el dev pueble sessions |
 | **SHURQ limita la ventana larga** | Paginar en chunks de ~90 días por start/end_date y concatenar `data[]` |
 | SHURQ tool devuelve error transitorio (timeout/rate-limit) | Reintentar 1 vez; si sigue, reportar el error real y skip esa marca (no inventar causa de config) |
 | Reporting week absent in data | Use most recent complete week + flag to Nacho |
