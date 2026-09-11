@@ -11,13 +11,14 @@ description: >
   Single-brand mode — for multi-marketplace clients (US + CA) generate one report per marketplace.
 ---
 
-# Weekly Report Skill — Single-Call (V4.1 · SHURQ edition)
+# Weekly Report Skill — Single-Call (V4.2 · SHURQ edition)
 
-**Versión actual:** V4.1 (2026-09-11) — migrada de AdLabs a **SHURQ**. Misma estructura de reporte y
+**Versión actual:** V4.2 (2026-09-11) — migrada de AdLabs a **SHURQ**. Misma estructura de reporte y
 misma lógica de rankings que V3; lo único que cambió es la **capa de datos** (AdLabs → SHURQ) y la
 **resolución de cuenta** (`adlabs_team_id`/`adlabs_profile_id` → `shurq_account_id` + `mkp_id`).
-V4.1 afina el manejo de Sessions/Total CVR ante el gap de Sales & Traffic de SHURQ (omitir del
-reporte al cliente + flag interno) y explicita ClickUp/Slack como inputs obligatorios de Next Steps.
+V4.2: **Sessions/Total CVR resueltas** — se toman de `custom_metric_calculator` (sessions por día),
+porque `get_sales_traffic.sessions` está roto (devuelve 0); se reportan y rankean normal. ClickUp/Slack
+quedan explícitos como inputs obligatorios de Next Steps.
 
 **Historial:** V3 (2026-08-16) — data pulled live from AdLabs, zero local files, zero Excel.
 
@@ -147,24 +148,38 @@ this_sunday      = today - days_since_sunday       # Sunday of the in-progress w
 rw_end           = this_sunday - 1 day             # Saturday = end of last COMPLETE week
 rw_start         = rw_end - 6 days                 # Sunday
 pw_start         = rw_start - 7 days ; pw_end = pw_start + 6 days
-# Run on Friday 2026-09-11 -> rw = 2026-08-31 .. 2026-09-06
+# Run on Friday 2026-09-11 -> rw = 2026-08-30 .. 2026-09-05 (Sun-Sat)
 date_from        = rw_start - 52 weeks             # trailing ~53-week window for rankings
 date_to          = rw_end
 ```
 
-### 2b. Pull the daily series (two SHURQ tools)
+### 2b. Pull the daily series (THREE SHURQ tools)
 
 ```python
 acc = <account_id>; mkp = <mkp_id>
-# Ad-attributed (PPC) daily: date, impressions, clicks, cost, sales, orders, units, acos, roas, cpc, ctr, cvr
+# 1) Ad-attributed (PPC) daily: date, impressions, clicks, cost, sales, orders, units, acos, roas, cpc, ctr, cvr
 ads = await call_tool("get_ads_daily_trend",
         {"account_id": acc, "marketplace_id": mkp, "start_date": date_from, "end_date": date_to})
-# Total business daily: date, sessions, revenue, orders, units (Sales & Traffic + P&L)
+# 2) Total business daily: date, revenue, orders, units. (Use ONLY revenue + orders here — its
+#    `sessions` field is unreliable / returns 0; sessions come from tool #3.)
 st  = await call_tool("get_sales_traffic",
         {"account_id": acc, "marketplace_id": mkp, "start_date": date_from, "end_date": date_to})
+# 3) SESSIONS daily (the working source — get_sales_traffic.sessions is broken): custom_metric_calculator
+#    returns per-day `sessions` (and `orders`, which cross-checks #2). Use its `sessions` field.
+sess = await call_tool("custom_metric_calculator",
+        {"account_id": acc, "numerator": "orders", "denominator": "sessions",
+         "marketplace_id": mkp, "start_date": date_from, "end_date": date_to})
 ```
 
-- Both return `{"data": [ {row per day}, ... ], "metadata": {...}, "summary": {...}}`.
+- All three return `{"data": [ {row per day}, ... ], "metadata": {...}, "summary": {...}}`.
+- **Sessions source (important):** `sess.data[].sessions` is populated for every day (validated:
+  Natchiketa week Aug 30–Sep 5 = 13,936 sessions, matching `custom_date_report.traffic.sessions` to
+  the unit). `get_sales_traffic.sessions` returns 0 for all accounts (known SHURQ bug) — **never use
+  it**; always take sessions from tool #3. `page_views`, if ever needed, comes the same way
+  (`numerator="page_views"`).
+- **Alternativa 1-call por semana:** para un chequeo puntual de UNA semana, `custom_date_report(account_id,
+  marketplace_id, start_date, end_date)` devuelve `ads` + `pnl` + `traffic{sessions, cvr}` en una sola
+  llamada (≤90 días). Útil para validar; para el rollup + rankings usá las 3 series diarias de arriba.
 - **Currency:** read it from `get_orders_summary(...).metadata.currency` (pull once for the reporting
   week window), or from the account. Never hardcode `$` — UK clients → £, etc.
 
@@ -186,7 +201,7 @@ Agrupá cada fila por su `week_start` (el domingo de esa fecha) y sumá. **Field
 | `clicks` / `impressions` | ads_daily | `sum(clicks)` / `sum(impressions)` |
 | `total_sales` | sales_traffic | `sum(revenue)` (= Seller Central total sales; == `get_orders_summary.revenue`) |
 | `total_orders` | sales_traffic | `sum(orders)` |
-| `total_sessions` | sales_traffic | `sum(sessions)` **si >0**, si no → `None` (ver caveat) |
+| `total_sessions` | **custom_metric_calculator** | `sum(sess.data[].sessions)` (NO de sales_traffic) |
 | `organic_sales` | derived | `total_sales - ppc_sales` |
 
 Ratios (idénticos a V3):
@@ -205,20 +220,17 @@ has_org = total_sales>0                                 # datos orgánicos/marke
 # PPC / mixtas → None si not has_ppc ; orgánicas → None si not has_org
 ```
 
-> **⚠️ Caveat SHURQ — Total Sessions / Total CVR (gap del pipeline, confirmado 2026-09-11):**
-> hoy `get_sales_traffic` devuelve `sessions: 0` **y** `page_views: 0` (y browser/mobile) para
-> **todas** las cuentas testeadas — es un gap GLOBAL de la ingesta Sales & Traffic en la fuente PG,
-> no algo por cuenta. `revenue`/`orders`/`units` de la misma tabla SÍ vienen bien. **`page_views` NO
-> sirve como proxy** de Sessions (también está en 0), y aunque tuviera dato, Page Views ≠ Sessions.
-> **Manejo (decidido por Nacho): OMITIR + avisar internamente.**
-> - Si `total_sessions` es None en toda la ventana (o solo la reporting week): **NO** muestres las
->   líneas *Total Sessions* ni *Total CVR* en el reporte al cliente (nada de "N/A" a la vista del
->   cliente), y **no** las rankees ni las uses en el análisis.
-> - En el **hand-off interno a Nacho** (el resumen que le devolvés en el chat cuando corrés el skill,
->   NO el mensaje de Slack), incluí siempre una línea: `⚠️ Sessions/Total CVR no disponibles esta
->   semana (gap del pipeline SHURQ Sales & Traffic).` Así Nacho sabe por qué faltan.
-> - Cuando el dev arregle la ingesta y `sessions` vuelva >0, el skill las muestra normal otra vez sin
->   ningún cambio (la lógica ya es condicional). No hay que tocar nada.
+> **✅ Total Sessions / Total CVR — fuente correcta (resuelto 2026-09-11):** Sessions y CVR SÍ están
+> disponibles y **se reportan normal**. La trampa: **`get_sales_traffic.sessions` está roto** (devuelve
+> 0 para todas las cuentas). La fuente que funciona es **`custom_metric_calculator`** (tool #3 del Step
+> 2b), que trae `sessions` por día en toda la ventana (validado: Natchiketa 13,936 sesiones en la
+> semana Aug 30–Sep 5, reconcilia con `custom_date_report.traffic.sessions`). `total_cvr = total_orders
+> / total_sessions`. Rankealas y usalas en el análisis como cualquier otra KPI.
+> - **Fallback defensivo (solo si `custom_metric_calculator` devolviera `NO_DATA`/0 para una cuenta):**
+>   ahí sí, OMITIR las líneas *Total Sessions* y *Total CVR* del reporte al cliente (nada de "N/A" a la
+>   vista), no rankear, y avisar en el **hand-off interno** a Nacho:
+>   `⚠️ Sessions/Total CVR no disponibles esta semana para {brand}.` Con el snapshot actual esto casi
+>   nunca pasa; es la red por si una cuenta no tiene el Sales & Traffic sync.
 
 ```
 rw = weekly_data[rw_start]  (o la semana completa más reciente si falta)
@@ -394,11 +406,11 @@ Bold a las cifras clave. Conectá los puntos (paid vs organic, efficiency vs vol
 [organic health, halo signal.]
 
 *Total Sessions – [value] ([WoW %]):*
-[traffic level + trend. **Si sessions no disponibles en SHURQ → NO incluyas esta línea en absoluto**
-(ni "N/A"); el cliente no debe ver el bache. Ver caveat.]
+[traffic level + trend. Fuente: custom_metric_calculator (ver Step 2b). Solo en el caso raro de que
+sessions no estén disponibles para la cuenta → omití la línea entera (sin "N/A"). Ver caveat.]
 
 *Total CVR – [value] ([WoW %]):*
-[conversion quality, traffic mix. **Idem: omití la línea entera si no hay sessions.**]
+[conversion quality, traffic mix. `total_orders/total_sessions`. Idem: omití solo si no hay sessions.]
 
 *Performance Analysis*
 [Un párrafo, 3–5 oraciones. 2–3 rankings notables. Frame con las data-aware windows:
@@ -442,8 +454,8 @@ Siempre rank/count nominal ("rank 12 of the last 14 weeks"). Nunca %, nunca "all
 - Sin canal → output inline a Nacho con nota. Multi-marketplace → un mensaje por marketplace.
 - **Hand-off interno a Nacho (en el chat, NO en Slack):** después de postear, devolvele a Nacho un
   cierre corto con: dónde posteó (canal), la semana reporteada, y **cualquier KPI que quedó afuera**.
-  En particular, si Sessions/Total CVR se omitieron, incluí la línea:
-  `⚠️ Sessions/Total CVR no disponibles esta semana (gap del pipeline SHURQ Sales & Traffic) — omitidas del reporte al cliente.`
+  En el caso raro de que Sessions/Total CVR se hayan omitido (custom_metric_calculator sin data),
+  incluí: `⚠️ Sessions/Total CVR no disponibles esta semana para {brand} — omitidas del reporte.`
   Mencioná también si ClickUp o Slack no devolvieron contexto (para que sepa por qué los Next Steps
   salieron solo de datos).
 
@@ -460,7 +472,7 @@ Siempre rank/count nominal ("rank 12 of the last 14 weeks"). Nunca %, nunca "all
 | Missing `dashboard_url` | Omit the "full data dashboard HERE" line |
 | Missing `team_took_over_date` | Fall back to `onboarding_date`, else last-14-weeks window |
 | Missing `acos_target`/`tacos_target` | Skip target language for that KPI |
-| **SHURQ `get_sales_traffic` sessions == 0 (gap global actual)** | OMITIR las líneas Total Sessions y Total CVR del reporte al cliente (sin "N/A"), no rankear; flag en el hand-off interno a Nacho. `page_views` tampoco sirve (también 0). Vuelve solo cuando el dev pueble sessions |
+| Sessions/Total CVR | Fuente = `custom_metric_calculator` (orders/sessions), NO `get_sales_traffic` (su `sessions` está roto = 0). Se reportan normal. Solo si custom_metric_calculator da NO_DATA para la cuenta → omitir esas 2 líneas + flag interno |
 | **SHURQ limita la ventana larga** | Paginar en chunks de ~90 días por start/end_date y concatenar `data[]` |
 | SHURQ tool devuelve error transitorio (timeout/rate-limit) | Reintentar 1 vez; si sigue, reportar el error real y skip esa marca (no inventar causa de config) |
 | Reporting week absent in data | Use most recent complete week + flag to Nacho |
@@ -483,7 +495,9 @@ Siempre rank/count nominal ("rank 12 of the last 14 weeks"). Nunca %, nunca "all
 |---|---|---|
 | Client config | Supabase `clients` | `execute_sql` (project awhiobrcgghyiycxukjm) |
 | Weekly PPC KPIs | SHURQ | `get_ads_daily_trend(account_id, marketplace_id, start_date, end_date)` → rollup |
-| Total sales / orders / sessions | SHURQ | `get_sales_traffic(account_id, marketplace_id, start_date, end_date)` → rollup |
+| Total sales / orders | SHURQ | `get_sales_traffic(account_id, marketplace_id, start_date, end_date)` → rollup (usá `revenue` + `orders`; NO `sessions`) |
+| **Sessions / Total CVR** | SHURQ | `custom_metric_calculator(account_id, numerator="orders", denominator="sessions", marketplace_id, start_date, end_date)` → `sum(sessions)` por semana |
+| 1-call por semana (validación) | SHURQ | `custom_date_report(account_id, marketplace_id, start_date, end_date)` → `ads`+`pnl`+`traffic{sessions,cvr}` |
 | Currency + totals sanity | SHURQ | `get_orders_summary(account_id, marketplace_id, start_date, end_date)` |
 | Account/mkp resolution | SHURQ | `list_my_accounts()` |
 | Pending tasks | ClickUp | `clickup_search` (folder) → `clickup_filter_tasks` (open) |
