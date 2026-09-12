@@ -3,14 +3,25 @@
 **Objetivo:** dejar de usar AdLabs y correr todos los skills sobre **SHURQ** manteniendo todo
 funcionando. Este doc es el patrón probado con los 2 pilotos para escalar al resto.
 
-**Estado (2026-09-11):**
+**Estado (2026-09-12):**
 - ✅ **Infra Supabase lista:** `clients.config.shurq_account_id` está cargado para los 20 clientes
   activos (backfilleé `LongTeaVity` US+CA = `1940`; los otros 18 ya lo tenían).
 - ✅ **Piloto lectura migrado:** `weekly-report` (V4 · SHURQ) — validado al centavo (Natchiketa,
   Aug 31–Sep 6).
 - ✅ **Piloto escritura migrado:** `daily-negatives-autopush` (V3 · SHURQ) — contrato de push validado
   (preview → confirm) sin escribir nada.
-- ⏳ **Pendiente:** validar los 2 pilotos en real y migrar los ~18 skills restantes con este patrón.
+- ✅ **Prioridades de Nacho migradas (por orden de importancia):**
+  1. `daily-harvest-supabase` (V2.0 · SHURQ)
+  2. `weekly-negatives-review` — **EN PAUSA**: SHURQ aún no expone tool para archivar/remover *negative
+     keywords* (sí lee `list_negative_targets`, y archiva product/negative-product con `remove_product_target`,
+     pero no keywords). Reanudar cuando dev entregue la tool.
+  3. `weekly-wins` (V6 · SHURQ)
+  4. `monthly-report` (V2.0 · SHURQ)
+  5. `daily-check` (V6.0 · SHURQ, config → Supabase)
+  6. `ppc-adlabs-audit` → **deprecado**. Se consolidó en el `ppc-audit` (SHURQ) ya existente, adaptado a
+     mi workflow (config Supabase, fix de 4 tools inexistentes, triggers/branding). Ver §5.
+- ⏳ **Pendiente:** validar todo en real; reanudar `weekly-negatives-review` cuando exista la tool; migrar
+  el resto de skills de menor prioridad con este mismo patrón.
 
 ---
 
@@ -121,7 +132,17 @@ rankear, nunca inventar un proxy.
 **Solo lectura → migración directa con el patrón de `weekly-report` (bajo riesgo):**
 `weekly-wins`, `monthly-report`, `daily-check` / `daily-check-client(-supabase)` /
 `daily-check-dashboard(-supabase)`, `kpi-quick-check`, `client-meeting-prep`, `client-reply-drafter`,
-`ppc-adlabs-audit` (renombrar → `ppc-shurq-audit`), `master-dashboard-supabase`.
+`master-dashboard-supabase`.
+
+> **`ppc-adlabs-audit` → DEPRECADO (decisión 2026-09-12).** No se creó un skill nuevo: ya existía un
+> `ppc-audit` (SHURQ, deck .pptx de 11 slides con branding Sophie Society) que hace exactamente el
+> audit end-to-end sobre SHURQ. Se adaptó ese (config desde `public.clients` en Supabase; fix de 4
+> tools que no existen en el connector actual — `list_advertised_products`/`get_pnl_by_product` →
+> `query_table(sp_pnl_asin_daily)`, `get_orders_daily_trend` → `get_sales_traffic`, `get_cogs_coverage`
+> → `query_table(cogs)`; triggers/branding a mi workflow) y se subió a `SHURQ/ppc-audit.skill`. El
+> `.docx` del AdLabs-audit se descarta: los audits reales en Drive ya son `.pptx`. **Acción manual
+> pendiente:** el `ppc-audit` canónico en `General Skills/` conviene reemplazarlo por esta versión
+> adaptada, y quitar/deshabilitar `ppc-adlabs-audit` del entorno de Cowork skills.
 → Reemplazar el pull de AdLabs por `get_ads_daily_trend` / `get_ads_summary` / `get_sales_traffic` /
 `get_pnl_summary`. Config `shurq_account_id` + `mkp_id`. Sin sesión/references.
 
