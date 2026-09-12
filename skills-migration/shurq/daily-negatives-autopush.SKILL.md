@@ -13,11 +13,14 @@ description: >
 
 # Daily Negatives — Autopush (snapshot → SHURQ, automático)
 
-**Versión:** V3.0 (2026-09-11) — **migrada de AdLabs a SHURQ.** Misma lógica de gate + MODE=approved
+**Versión:** V3.1 (2026-09-12) — **migrada de AdLabs a SHURQ.** Misma lógica de gate + MODE=approved
 que V2.0; lo que cambió es el **motor de push** (AdLabs `create_entities`/`apply` → SHURQ
 `add_negative_keyword` + `confirm_action`) y la **resolución de cuenta/destino**
 (`adlabs_team_id`/`profile_id` + `get_entity_data(ad_group, CONTAINS_ASINS)` → `shurq_account_id` +
-`mkp_id` + `list_product_ads`).
+`mkp_id` + `list_product_ads` **por ASIN**, scopeado a campañas manuales **"SO |"**).
+V3.1 (dry-run Hekaya): `list_product_ads` se llama POR ASIN (cap de 500/call) y el destino se filtra a
+`"SO |"` ENABLED sin-Scavenger — reproduce el set de AdLabs (~20/16) y evita sobre-aplicar a la capa
+automática (Hekaya: 1,317 ad groups sin filtro).
 
 **Historial:** V2.0 (2026-09-06) — gate de confianza + MODE=approved. V1.0 (2026-08-30) — puente
 snapshot→AdLabs, auto-ruteo por línea, recibo + idempotencia.
@@ -83,9 +86,10 @@ era AdLabs.
 4. **Auto-apply.** El flujo va derecho preview → resumen → confirm, pero SIEMPRE imprime el resumen
    exacto (qué línea, qué ad groups, cuántos negativos) antes de confirmar. `dry-run` frena antes del
    confirm (hace los previews pero NO los confirma).
-5. **Solo ENABLED.** De `list_product_ads`, quedate solo con `ad_status=="ENABLED"`. (El estado de
-   campaña se refleja en que sus product ads enabled existan; si dudás, cruzá con `list_campaigns`
-   status=enabled.)
+5. **Solo ENABLED + solo campañas manuales "SO |".** De `list_product_ads` (llamado por ASIN),
+   quedate con `ad_status=="ENABLED"` **y** `campaign_name` que empiece con `"SO |"` (la convención
+   manual de Sophie; configurable `cfg.campaign_prefix`). Esto excluye la capa automática/programática
+   (AuCl/AuCo/RB…) que NO debe recibir estos negativos — ver Step 5 para el porqué (Hekaya: 1,317 vs 19).
 6. **Excluir Scavenger SIEMPRE** (regla de Nacho): descartá todo ad group cuyo `campaign_name`
    contenga `scavenger` (case-insensitive). Las Scavenger son de descubrimiento intencional.
 7. **`note` significativa por push** para el audit log. SHURQ no toma un `note` libre en
@@ -215,26 +219,45 @@ cada lista con `push_text` **deduplicados** (case-insensitive). Conservá `sourc
 
 ### Step 5 — Resolver destino por línea + PUSH vía SHURQ
 
-Traé el catálogo de product ads UNA vez por cuenta:
-```python
-pa = await call_tool("list_product_ads", {"account_id": account_id, "marketplace_id": mkp_id})
-ads = pa["data"]   # cada fila: {ad_status, amazon_asin, api_type, campaign_id, campaign_name, adgroup_id, ...}
-```
-> **Paginación:** `list_product_ads` trae hasta `limit` (default 100) filas. Si `metadata.rows_returned
-> == limit`, subí `limit` o paginá hasta traer todo el catálogo (cuentas grandes tienen >100 product
-> ads). No pushees con un catálogo truncado.
+**Resolver ad groups destino por línea — filtro por ASIN + convención de campaña "SO |" (regla clave).**
+
+> **⚠️ CAP de `list_product_ads` + scope del destino (validado en el dry-run de Hekaya, 2026-09-12):**
+> `list_product_ads` está **capado a 500 filas por llamada** y NO tiene filtro efectivo si lo llamás a
+> nivel cuenta — en cuentas grandes (Hekaya/MyNextGen tiene 349 ASINs) los ASINs manejados quedan fuera
+> del top-500. **Solución:** llamalo **una vez por ASIN** de la línea, con el parámetro `asin` (filtro
+> server-side): `list_product_ads(account_id, marketplace_id, asin=<ASIN>, limit=500)`.
+>
+> Y **el scope del destino es SOLO las campañas manuales de Sophie** — las que empiezan con **`"SO |"`**
+> (default; configurable por `cfg.campaign_prefix` si algún cliente usa otra convención). Sin este
+> filtro, `list_product_ads` trae TODAS las ad groups de la cuenta que anuncian la línea, incluyendo
+> la capa **programática/automática** (AuCl/AuCo/RB…): en Hekaya eso son **1,317** ad groups vs las
+> **~19-20 manuales** que negaba AdLabs — 65x de sobre-aplicación + inviable (miles de llamadas de a
+> una). El filtro `"SO |"` + ENABLED + sin-Scavenger **reproduce exactamente el set de AdLabs**.
 
 Por cada `linea` en `push_groups`:
 1. `asins_linea = set(line_asins[linea])`.
-2. **Resolver ad groups destino** (reemplaza el `CONTAINS_ASINS` de AdLabs): de `ads`, quedate con las
-   filas donde:
-   - `amazon_asin in asins_linea`, **y**
+2. **Resolver ad groups destino** (reemplaza el `CONTAINS_ASINS` de AdLabs): recorré cada ASIN de la
+   línea con `list_product_ads(..., asin=<ASIN>, limit=500)` y quedate con las filas donde:
    - `ad_status == "ENABLED"`, **y**
    - `api_type in ("sp","sb")` (keyword-negatives NO aplican a SD → salteá `sd`), **y**
+   - `campaign_name.startswith(cfg.get("campaign_prefix","SO |"))` (**solo campañas manuales**), **y**
    - `"scavenger" not in campaign_name.lower()` (regla 6).
    Deduplicá a pares únicos `(campaign_id, adgroup_id)`. Ese es el set destino de la línea.
-3. **Set vacío (0 ad groups ENABLED que anuncian la línea):** NO pushees. Sumá la línea a
-   `held_no_dest[]` con motivo "sin ad groups ENABLED que anuncien esta línea".
+   ```python
+   dest_pairs = set()
+   for a in asins_linea:
+       pa = await call_tool("list_product_ads", {"account_id": account_id, "marketplace_id": mkp_id, "asin": a, "limit": 500})
+       for r in pa["data"]:
+           cn = r["campaign_name"]
+           if (r["ad_status"] == "ENABLED" and r["api_type"] in ("sp","sb")
+               and cn.startswith(PREFIX) and "scavenger" not in cn.lower()):
+               dest_pairs.add((r["campaign_id"], r["adgroup_id"]))
+   ```
+   > **Sanity check (opcional pero recomendado):** si `len(dest_pairs)` para una línea supera un tope
+   > razonable (ej. > 60 ad groups), **pará y avisá** — probablemente el filtro `"SO |"` no aplica a ese
+   > cliente (usa otra convención) y estarías por sobre-aplicar. No pushees a ciegas cientos de ad groups.
+3. **Set vacío (0 ad groups "SO |" ENABLED que anuncian la línea):** NO pushees. Sumá la línea a
+   `held_no_dest[]` con motivo "sin ad groups ENABLED (SO |) que anuncien esta línea".
 4. **Validar `push_text` con FALLBACK a exact (NO drop):** ≤80 chars; PHRASE ≤4 palabras; EXACT ≤10.
    - **PHRASE que supera 4 palabras (o 80 chars):** NO descartar → re-rutear a **EXACT del `term`
      completo** (mové a `exact[]`, `push_text=term`). Solo si el `term` también supera exact
@@ -376,7 +399,8 @@ la **línea destino**).
 | Candidato `kind=="asin"` | NUNCA se pushea (regla 10). Va a `asins_skipped[]`. |
 | Candidato `product = "General (sin asignar)"` (keyword) | RETENER. `held[]`. Dashboard. |
 | Línea sin ad groups ENABLED que la anuncien | RETENER esa línea (`held_no_dest[]`). Nunca pushear sobre 0 destinos. |
-| `list_product_ads` truncado (`rows_returned == limit`) | Paginar / subir limit hasta el catálogo completo. No pushear truncado. |
+| `list_product_ads` capado a 500 / cuenta grande | Llamar POR ASIN (`asin=<ASIN>`), no a nivel cuenta. Los ASINs manejados pueden quedar fuera del top-500. |
+| Destino resuelve cientos/miles de ad groups | Falta el filtro `"SO |"` (o el cliente usa otra convención). Parar y avisar; nunca pushear a cientos de ad groups automáticos. |
 | `guardrail_check.passed == false` en el preview | No confirmar. `dropped[]`/`blocked` con el `block_type`/`reason`. |
 | `get_action_status` = "already exists" | `skipped_existing`, no error. |
 | Fetch de SHURQ falla (timeout/rate-limit) | Reintentar 1 vez; si sigue, `reason:"shurq_error"`, seguir con los demás. NUNCA "cuenta no conectada" si `shurq_account_id` está. |
@@ -403,8 +427,9 @@ la **línea destino**).
 |---|---|
 | `adlabs_team_id` + `adlabs_profile_id` | `shurq_account_id` (int) + `mkp_id` |
 | `start_chat_session` + `read_resource` | (nada — sin sesión) |
-| `get_entity_data(ad_group, CONTAINS_ASINS, STATE=ENABLED)` → reference | `list_product_ads` filtrado por `amazon_asin`+`ad_status=ENABLED`+`api_type∈{sp,sb}`+no-Scavenger |
-| `read(reference)` | leer `data[]` del `list_product_ads` (paginar) |
+| `get_entity_data(ad_group, CONTAINS_ASINS, STATE=ENABLED)` → reference | `list_product_ads(asin=<ASIN>)` por ASIN + `ad_status=ENABLED`+`api_type∈{sp,sb}`+`campaign_name` empieza `"SO \|"`+no-Scavenger |
+| `read(reference)` | leer `data[]` del `list_product_ads` (por ASIN; capado a 500/call) |
+| (scope implícito del profile/team AdLabs) | filtro explícito `"SO \|"` — sin él SHURQ trae toda la cuenta (auto incluidas) |
 | `create_entities(negative_targeting, keywords, match_types)` → preview_id | `add_negative_keyword(..., match_type="phrase"/"exact", level="ad_group")` → action_id (por keyword×ad group) |
 | `create_entities(negative_targeting_apply, preview_id, note)` | `confirm_action(action_id)` + `get_action_status(account_id, action_id)` |
 | `AD_GROUP_NEGATIVE_PHRASE/EXACT` | `match_type="phrase"/"exact"`, `level="ad_group"` |
