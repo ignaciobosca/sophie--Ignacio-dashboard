@@ -20,8 +20,26 @@ funcionando. Este doc es el patrón probado con los 2 pilotos para escalar al re
   5. `daily-check` (V6.0 · SHURQ, config → Supabase)
   6. `ppc-adlabs-audit` → **deprecado**. Se consolidó en el `ppc-audit` (SHURQ) ya existente, adaptado a
      mi workflow (config Supabase, fix de 4 tools inexistentes, triggers/branding). Ver §5.
-- ⏳ **Pendiente:** validar todo en real; reanudar `weekly-negatives-review` cuando exista la tool; migrar
-  el resto de skills de menor prioridad con este mismo patrón.
+- ✅ **Familia de negativos migrada (2026-09-12):**
+  - `daily-negatives-supabase` (V2.1 · SHURQ) — Step 3 pull → `query_table("searchterms_daily")`.
+  - `negative-targeting` (V4.0 · SHURQ) — config a Supabase; CVR `get_ads_summary`; search terms y ASINs
+    vía `query_table`; `get_product_detail` para categoría; sin fallback AdLabs. Output XLSX/Slack local.
+  - `shurq-push-negatives` (V1.0) — **reemplaza** `adlabs-push-negatives` (deprecado, .skill a papelera).
+    Push por `add_negative_keyword`→`confirm_action`; destino resuelto con `list_campaigns`+`list_product_ads`.
+    ⚠️ **Limitación:** SHURQ no crea negative-ASINs todavía → los ASINs se saltean (manual) hasta que exista la tool.
+  - `daily-negatives` (local) — **deprecado** (lo reemplaza `daily-negatives-supabase`). No se migró.
+- ⏳ **Pendiente (Tier A — llaman a AdLabs de verdad):**
+  - `search-term-harvest` (write, harvest positivo → `add_keyword`; patrón daily-harvest).
+  - `biweekly-bid-optimizer` (write bids; ⚠️ usa el optimizer NATIVO de AdLabs — verificar si SHURQ lo replica).
+  - `client-reply-drafter` (read, arma respuestas con data PPC de AdLabs).
+  - `daily-check-client` / `daily-check-client-supabase` (read, variantes per-client del daily-check).
+  - Reanudar `weekly-negatives-review` y sumar push de negative-ASINs a `shurq-push-negatives` cuando el dev
+    entregue las tools SHURQ (archivar negative keyword; crear negative-ASIN).
+- 🟡 **Config-only (ajustar, no llama data):** `client-onboarding` — que capture `shurq_account_id` (de
+  `list_my_accounts`) en vez de `adlabs_team_id`/`adlabs_profile_id`.
+- ⚪ **Sin dependencia real de AdLabs (NO migrar):** `client-meeting-prep`, `onboarding-operational-tasks`,
+  `listing-juice(-new)`, `amazon-listing-optimizer(-75)`, `product-finder`, `kpi-quick-check`,
+  `daily-check-dashboard(-supabase)`, `personal-assistant-skill`.
 
 ---
 
