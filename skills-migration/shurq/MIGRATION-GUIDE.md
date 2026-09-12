@@ -28,10 +28,19 @@ funcionando. Este doc es el patrón probado con los 2 pilotos para escalar al re
     Push por `add_negative_keyword`→`confirm_action`; destino resuelto con `list_campaigns`+`list_product_ads`.
     ⚠️ **Limitación:** SHURQ no crea negative-ASINs todavía → los ASINs se saltean (manual) hasta que exista la tool.
   - `daily-negatives` (local) — **deprecado** (lo reemplaza `daily-negatives-supabase`). No se migró.
-- ⏳ **Pendiente (Tier A — llaman a AdLabs de verdad):**
-  - `search-term-harvest` (write, harvest positivo → `add_keyword`; patrón daily-harvest).
-  - `biweekly-bid-optimizer` (write bids; ⚠️ usa el optimizer NATIVO de AdLabs — verificar si SHURQ lo replica).
-  - `client-reply-drafter` (read, arma respuestas con data PPC de AdLabs).
+- ✅ **Tier A migrado (2026-09-12):**
+  - `search-term-harvest` (V5.0 · SHURQ) — config Supabase; harvest positivo vía `query_table("searchterms_daily")`
+    (orders>0, auto/broad) + `keywords_daily`; reglas Scavenger (incluido en harvest, excluido de neg/bids);
+    `harvest_history.json` queda local.
+  - `client-reply-drafter` (SHURQ) — cascada de fuentes sin AdLabs (Shurq→Sophie Hub→Helium10); granularidad
+    de ads vía `query_table`; config desde `public.clients`.
+  - `biweekly-bid-optimizer` (V2.0 · SHURQ) — **resuelto el bloqueo:** SHURQ SÍ tiene optimizer nativo
+    (`preview_bid_changes` = motor del /ad-manager). Config Supabase (`target_acos = acos_target*100` PERCENT);
+    clasificación por clicks (`campaigns_daily`, umbral 200 → ventana 14d vs 30d); preset map
+    (watchlist→profit, launch→growth, else balanced); `preview_bid_changes` + `get_bid_preview_rows` +
+    `apply_bid_changes(preview_id, keyword_ids)`→`confirm_action` (MODE=apply recomputado, 1 batch ≤500);
+    placement rounding = solo DISPLAY; MODE=audit/audit-apply eliminados. Executor SP-only.
+- ⏳ **Pendiente (Tier A):**
   - `daily-check-client` / `daily-check-client-supabase` (read, variantes per-client del daily-check).
   - Reanudar `weekly-negatives-review` y sumar push de negative-ASINs a `shurq-push-negatives` cuando el dev
     entregue las tools SHURQ (archivar negative keyword; crear negative-ASIN).
