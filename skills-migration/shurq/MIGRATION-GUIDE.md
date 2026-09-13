@@ -40,8 +40,16 @@ funcionando. Este doc es el patrón probado con los 2 pilotos para escalar al re
     (watchlist→profit, launch→growth, else balanced); `preview_bid_changes` + `get_bid_preview_rows` +
     `apply_bid_changes(preview_id, keyword_ids)`→`confirm_action` (MODE=apply recomputado, 1 batch ≤500);
     placement rounding = solo DISPLAY; MODE=audit/audit-apply eliminados. Executor SP-only.
-- ⏳ **Pendiente (Tier A):**
-  - `daily-check-client` / `daily-check-client-supabase` (read, variantes per-client del daily-check).
+  - `daily-check-client-supabase` (V2.0 · SHURQ) — feeder per-cliente del `master-dashboard-supabase`.
+    Config ya venía de Supabase y snapshot ya iba a `dashboard_snapshots`; el único swap fue la capa de
+    datos: AdLabs `profile` (Pulls A/B/C) → SHURQ `get_ads_summary` + `get_sales_traffic` (misma lógica de
+    3 ventanas t-1/t-2/ayer que el `daily-check` consolidado). Slack OFF (igual que el piloto). Cuenta por
+    `shurq_account_id` + `mkp_id`. Steps 3/4/5/7 idénticos.
+  - `daily-check-client` (local V1.4) — **deprecado** (lo reemplaza `daily-check-client-supabase`). Usaba
+    config en Drive + card Slack por cliente + snapshot en archivo local (path Windows). ⚠️ **Cambio de
+    comportamiento a confirmar con Nacho:** la local mandaba una card Slack al canal interno de cada marca;
+    la Supabase NO postea Slack (la visibilidad la dan el `daily-check` consolidado + el dashboard). Si Nacho
+    quiere seguir con cards Slack por cliente, hay que reactivar el Step 6 en la versión SHURQ.
   - Reanudar `weekly-negatives-review` y sumar push de negative-ASINs a `shurq-push-negatives` cuando el dev
     entregue las tools SHURQ (archivar negative keyword; crear negative-ASIN).
 - 🟡 **Config-only (ajustar, no llama data):** `client-onboarding` — que capture `shurq_account_id` (de
