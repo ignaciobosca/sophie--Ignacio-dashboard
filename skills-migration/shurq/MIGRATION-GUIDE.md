@@ -50,10 +50,16 @@ funcionando. Este doc es el patrón probado con los 2 pilotos para escalar al re
     comportamiento a confirmar con Nacho:** la local mandaba una card Slack al canal interno de cada marca;
     la Supabase NO postea Slack (la visibilidad la dan el `daily-check` consolidado + el dashboard). Si Nacho
     quiere seguir con cards Slack por cliente, hay que reactivar el Step 6 en la versión SHURQ.
-  - Reanudar `weekly-negatives-review` y sumar push de negative-ASINs a `shurq-push-negatives` cuando el dev
-    entregue las tools SHURQ (archivar negative keyword; crear negative-ASIN).
-- 🟡 **Config-only (ajustar, no llama data):** `client-onboarding` — que capture `shurq_account_id` (de
-  `list_my_accounts`) en vez de `adlabs_team_id`/`adlabs_profile_id`.
+  - `client-onboarding` (V3.0 · SHURQ+Supabase) — **cierra el loop del ecosistema.** Dos swaps: (1) identidad
+    de cuenta `adlabs_team_id`/`adlabs_profile_id` → `shurq_account_id` (resuelto con `list_my_accounts`) +
+    `amazon_marketplace`; (2) sink del config de JSON local Drive + manifest `_active_clients.json` → **upsert
+    a Supabase `public.clients`** (la fuente canónica que TODOS los skills migrados leen). La columna `active`
+    reemplaza al flag `expected` del manifest. Ficha de producto (`relevance_profiles`) y tracking competitivo
+    (Keepa/DataDive) sin cambios. Drive JSON + manifest **deprecados** (§Legacy en el skill).
+- ✅ **Tier A completo.** No quedan skills con dependencia real de AdLabs para migrar.
+- ⏸️ **Único pendiente — bloqueado por tools SHURQ que faltan:** reanudar `weekly-negatives-review` (archivar
+  negative keyword) y sumar push de negative-ASINs a `shurq-push-negatives` (crear negative-ASIN) cuando el dev
+  las entregue.
 - ⚪ **Sin dependencia real de AdLabs (NO migrar):** `client-meeting-prep`, `onboarding-operational-tasks`,
   `listing-juice(-new)`, `amazon-listing-optimizer(-75)`, `product-finder`, `kpi-quick-check`,
   `daily-check-dashboard(-supabase)`, `personal-assistant-skill`.
