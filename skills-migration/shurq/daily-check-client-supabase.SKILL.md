@@ -1,3 +1,15 @@
+---
+name: daily-check-client-supabase
+description: >
+  Supabase + SHURQ per-client daily check (V2 SHURQ). Runs Sophie Society's daily PPC check for ONE client,
+  reading the client config from the Supabase `clients` table and writing its dashboard snapshot to the
+  Supabase `dashboard_snapshots` table (upsert). Pulls MTD (t-1 spend, t-2 revenue/TACOS) and Last Month
+  from SHURQ (get_ads_summary + get_sales_traffic), computes efficiency vs targets, budget pacing and
+  revenue projection. Does NOT post to Slack — it is the per-client feeder for the master Supabase dashboard.
+  Trigger on "run daily-check-client-supabase for [Brand]", "daily supabase para [Brand]", "feeder [Brand]".
+  Single-brand only.
+---
+
 # Daily Account Check — Per-Client Skill (Supabase · SHURQ)
 
 **Versión actual:** V2.0 SHURQ (2026-09-13) — **migrada de AdLabs a SHURQ.** Deriva de la V1.0 SUPABASE

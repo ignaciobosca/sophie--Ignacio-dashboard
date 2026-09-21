@@ -1,3 +1,18 @@
+---
+name: weekly-negatives-review
+description: >
+  La red de seguridad SEMANAL del negative targeting automático (V2 SHURQ). Por cliente, descubre las
+  campañas "Loose Match - High Likelihood" por PATRÓN de nombre (contiene "loose" Y "high likelihood",
+  case-insensitive), lee los negativos aplicados ahí en los ÚLTIMOS 30 DÍAS con list_negative_targets,
+  saltea los ya confirmados por roots/competitors, y re-juzga el resto contra el producto + el
+  relevance_profile para detectar negativos que podrían estar bloqueando tráfico RELEVANTE. Propone
+  "candidatos a archivar" con motivo y confianza — NO archiva nada sin tu OK. Cuando confirmás, archiva
+  esos negativos en SHURQ (archive_negative_targets → confirm_action) y los agrega a protected_relevant
+  para que el push no los re-negue. Trigger: "weekly negatives review para [Brand]", "revisá los negativos
+  de [Brand]", "run weekly-negatives-review for [Brand]". NO identifica términos nuevos ni pushea (eso es
+  daily-negatives-supabase / -autopush).
+---
+
 # Weekly Negatives Review — red de seguridad del auto-negativizado
 
 **Versión:** V2.0 SHURQ (2026-09-21) — **migrada de AdLabs a SHURQ.** Se destrabó al aparecer la tool
