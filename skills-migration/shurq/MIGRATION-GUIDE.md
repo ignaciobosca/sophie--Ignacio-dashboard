@@ -66,10 +66,20 @@ funcionando. Este doc es el patrón probado con los 2 pilotos para escalar al re
   - `weekly-negatives-review` → **migrado** (usa `archive_negative_targets`, ya no está en pausa).
   - Push de negative-ASINs en `shurq-push-negatives` → la tool existe (`add_negative_asin`) pero **por decisión
     de Nacho NO se auto-negativizan ASINs** (se siguen salteando). No es pendiente técnico, es política.
-- 🟢 **No quedan pendientes bloqueados.** La migración AdLabs → SHURQ está completa.
-- ⚪ **Sin dependencia real de AdLabs (NO migrar):** `client-meeting-prep`, `onboarding-operational-tasks`,
-  `listing-juice(-new)`, `amazon-listing-optimizer(-75)`, `product-finder`, `kpi-quick-check`,
-  `daily-check-dashboard(-supabase)`, `personal-assistant-skill`.
+- ✅ **`client-meeting-prep` (V2 · SHURQ) — migrado (2026-09-21).** Un sweep de verificación lo encontró
+  mal clasificado: su Step 3a SÍ jalaba performance MTD/LM + top 5 campañas de AdLabs. Migrado: config →
+  Supabase `public.clients` (`shurq_account_id` + `mkp_id`); Step 3a → `get_ads_summary` + `get_sales_traffic`
+  + `list_campaigns` (mismo patrón que daily-check); Step 3b secundario también SHURQ-native. Read.ai / Slack /
+  Notion / ClickUp / render sin cambios. Notion/ClickUp degradan a resolución por brand_name si el config no
+  trae esos ids.
+- 🟢 **No quedan pendientes bloqueados. La migración AdLabs → SHURQ está COMPLETA.**
+- 🟡 **Cosmético (no data layer):** `onboarding-operational-tasks` — AdLabs aparece solo como labels de
+  checklist ("Conexión con AdLabs", "PPC Audit (AdLabs o Manual)"); conviene cambiar el wording a SHURQ, pero
+  no jala data. No urgente.
+- ⚪ **Sin dependencia real de AdLabs (NO migrar):** `listing-juice(-new)`, `amazon-listing-optimizer(-75)`,
+  `product-finder`, `kpi-quick-check`, `daily-check-dashboard(-supabase)`, `personal-assistant-skill`.
+  (Verificado por grep 2026-09-21: mencionan "adlabs" solo de forma incidental — ejemplo de tool, o
+  explícitamente "cero AdLabs" / "pull zero AdLabs/Shurq data".)
 
 ---
 
