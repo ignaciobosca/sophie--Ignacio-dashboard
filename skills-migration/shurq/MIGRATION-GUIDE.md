@@ -12,9 +12,13 @@ funcionando. Este doc es el patrón probado con los 2 pilotos para escalar al re
   (preview → confirm) sin escribir nada.
 - ✅ **Prioridades de Nacho migradas (por orden de importancia):**
   1. `daily-harvest-supabase` (V2.0 · SHURQ)
-  2. `weekly-negatives-review` — **EN PAUSA**: SHURQ aún no expone tool para archivar/remover *negative
-     keywords* (sí lee `list_negative_targets`, y archiva product/negative-product con `remove_product_target`,
-     pero no keywords). Reanudar cuando dev entregue la tool.
+  2. `weekly-negatives-review` (V2.0 · SHURQ) — **migrado (2026-09-21).** Se destrabó al aparecer
+     `archive_negative_targets` (archivar negative keywords / product targets, preview → `confirm_action`) +
+     `list_negative_targets` (leer aplicados). Lee las loose-match con `list_campaigns`, los negativos con
+     `list_negative_targets` (state=enabled, ventana 30d client-side), re-juzga, y archiva los confirmados por
+     Nacho con `archive_negative_targets(ids)` → `confirm_action` → `get_negative_target_sync_status`. Mucho
+     más limpio que AdLabs (los uuids ya vienen del list; se fue el bug de filtros multi-valor). Learn a
+     `protected_relevant` sin cambios. ⚠️ Archivar es irreversible (Amazon no des-archiva).
   3. `weekly-wins` (V6 · SHURQ)
   4. `monthly-report` (V2.0 · SHURQ)
   5. `daily-check` (V6.0 · SHURQ, config → Supabase)
@@ -26,7 +30,8 @@ funcionando. Este doc es el patrón probado con los 2 pilotos para escalar al re
     vía `query_table`; `get_product_detail` para categoría; sin fallback AdLabs. Output XLSX/Slack local.
   - `shurq-push-negatives` (V1.0) — **reemplaza** `adlabs-push-negatives` (deprecado, .skill a papelera).
     Push por `add_negative_keyword`→`confirm_action`; destino resuelto con `list_campaigns`+`list_product_ads`.
-    ⚠️ **Limitación:** SHURQ no crea negative-ASINs todavía → los ASINs se saltean (manual) hasta que exista la tool.
+    ⚠️ **Política (no limitación):** SHURQ SÍ tiene `add_negative_asin`, pero por decisión de Nacho **NO
+    auto-negativizamos ASINs** → los ASINs se saltean (`asins_skipped[]`, push manual). El keyword-push es el único auto.
   - `daily-negatives` (local) — **deprecado** (lo reemplaza `daily-negatives-supabase`). No se migró.
 - ✅ **Tier A migrado (2026-09-12):**
   - `search-term-harvest` (V5.0 · SHURQ) — config Supabase; harvest positivo vía `query_table("searchterms_daily")`
@@ -56,10 +61,12 @@ funcionando. Este doc es el patrón probado con los 2 pilotos para escalar al re
     a Supabase `public.clients`** (la fuente canónica que TODOS los skills migrados leen). La columna `active`
     reemplaza al flag `expected` del manifest. Ficha de producto (`relevance_profiles`) y tracking competitivo
     (Keepa/DataDive) sin cambios. Drive JSON + manifest **deprecados** (§Legacy en el skill).
-- ✅ **Tier A completo.** No quedan skills con dependencia real de AdLabs para migrar.
-- ⏸️ **Único pendiente — bloqueado por tools SHURQ que faltan:** reanudar `weekly-negatives-review` (archivar
-  negative keyword) y sumar push de negative-ASINs a `shurq-push-negatives` (crear negative-ASIN) cuando el dev
-  las entregue.
+- ✅ **Tier A completo + familia de negativos cerrada (2026-09-21).** No quedan skills con dependencia real de
+  AdLabs para migrar. Aparecieron en SHURQ `archive_negative_targets` y `add_negative_asin`, así que:
+  - `weekly-negatives-review` → **migrado** (usa `archive_negative_targets`, ya no está en pausa).
+  - Push de negative-ASINs en `shurq-push-negatives` → la tool existe (`add_negative_asin`) pero **por decisión
+    de Nacho NO se auto-negativizan ASINs** (se siguen salteando). No es pendiente técnico, es política.
+- 🟢 **No quedan pendientes bloqueados.** La migración AdLabs → SHURQ está completa.
 - ⚪ **Sin dependencia real de AdLabs (NO migrar):** `client-meeting-prep`, `onboarding-operational-tasks`,
   `listing-juice(-new)`, `amazon-listing-optimizer(-75)`, `product-finder`, `kpi-quick-check`,
   `daily-check-dashboard(-supabase)`, `personal-assistant-skill`.

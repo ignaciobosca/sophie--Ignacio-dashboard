@@ -45,9 +45,10 @@ nivel ad group** en campañas concretas de Amazon Ads vía el MCP de SHURQ. Es e
 3. **Match types — respetá lo que pida Nacho; si no, default:**
    - "en phrase" → `match_type="phrase"`. "en exact" → `match_type="exact"`. "broad" → `match_type="broad"` (solo SP).
    - Default (no especifica) para keywords → **exact + phrase** (dos push por término).
-   - **ASINs (product targets negativos): SHURQ todavía NO expone tool para crearlos.** Cualquier token
-     tipo ASIN (`^B0[A-Z0-9]{8}$`) en la lista de términos se **saltea** y va a `asins_skipped[]` para
-     revisión manual. Avisalo en el recibo. (Solo keyword-negatives se pushean. Ver "Limitación conocida".)
+   - **ASINs (product targets negativos): NO se pushean — decisión de Nacho.** SHURQ SÍ tiene la tool
+     `add_negative_asin`, pero por política **no auto-negativizamos ASINs**. Cualquier token tipo ASIN
+     (`^B0[A-Z0-9]{8}$`) en la lista de términos se **saltea** y va a `asins_skipped[]` para revisión
+     manual. Avisalo en el recibo. (Solo keyword-negatives se pushean. Ver "Política — negative-ASINs".)
 
 4. **Auto-apply (preview → confirm), también en bulk.** El flujo va derecho preview → resumen →
    confirm, sin pausa de confirmación, incluso con reglas amplias. PERO imprimí SIEMPRE el resumen
@@ -166,7 +167,7 @@ Las tools de escritura y las de resolución de destino (`list_campaigns`, `list_
 - **Brand / cuenta** (para resolver `account_id`). Multi-marketplace ambiguo → preguntá cuál.
 - **Destino** — identificá el/los targeting mode(s) A/B/C/D. **Si no hay ni lista ni regla → Paso 2b.**
 - **Términos:** las líneas de la lista. Separá:
-  - **ASINs** → tokens `^B0[A-Z0-9]{8}$` → **NO se pushean** (limitación SHURQ) → `asins_skipped[]`.
+  - **ASINs** → tokens `^B0[A-Z0-9]{8}$` → **NO se pushean** (política: no auto-negativizamos ASINs) → `asins_skipped[]`.
   - **Keywords** → todo lo demás.
   - No confundas un ASIN que es **destino** (mode C) con un ASIN que es **término** (que acá se saltea).
 - **Match type explícito:** "en phrase"/"en exact"/"broad" (regla 3). Si no dice → exact + phrase.
@@ -237,7 +238,7 @@ for (cid, agid, cname, agname, api) in targets:      # api ∈ {"sp","sb"}; sd y
   > - Cuenta: **Happy Fox (US)** · account `842` · mkp `1`
   > - Destino: campaña **SP - Exact - Core** → 3 ad groups habilitados (Core-A, Core-B, Core-C)
   > - Keyword-negatives: 12 términos × EXACT+PHRASE × 3 ad groups = **72 acciones**
-  > - ASINs en la lista: 4 → **salteados** (SHURQ no crea negative-ASINs todavía)
+  > - ASINs en la lista: 4 → **salteados** (por decisión de Nacho: no auto-negativizamos ASINs)
   > - Los que ya existan se saltean (se ven en el recibo).
 - **Si modo = `dry-run`:** parás acá. Mostrá conteos + `action_id`s previewados. No confirmes.
 
@@ -245,7 +246,7 @@ for (cid, agid, cname, agname, api) in targets:      # api ∈ {"sp","sb"}; sd y
 Reportá: cuántos keyword-negatives se **crearon**, cuántos **ya existían** (skipped_existing), cuántos
 **bloqueó el guardrail**, cuántos pares **SD salteados**, y los **ASINs salteados** (`asins_skipped`).
 Cerrá con una línea accionable, p.ej. "Listo: 60 keyword-negatives aplicados a 3 ad groups de SP - Exact
-- Core; 12 ya existían; 4 ASINs quedaron pendientes de push manual (SHURQ aún no los soporta)."
+- Core; 12 ya existían; 4 ASINs quedaron para push manual (por política no auto-negativizamos ASINs)."
 
 ---
 
@@ -264,12 +265,13 @@ Cerrá con una línea accionable, p.ej. "Listo: 60 keyword-negatives aplicados a
 
 ---
 
-## Limitación conocida — negative-ASINs
-SHURQ **todavía no expone** una tool para **crear** negative product targets (ASINs). `add_negative_keyword`
-solo cubre keywords; `remove_product_target` archiva un target existente, no crea un negativo. Por eso
-este skill **saltea los ASINs** de la lista (`asins_skipped[]`) y los reporta para push manual. Cuando el
-dev agregue la tool (ej. `add_negative_asin` / `add_negative_product`), sumar acá el segundo loop
-(`expressions=["asin=\"B0...\""]`, match product-target) con el mismo patrón preview→confirm.
+## Política — negative-ASINs (NO auto-push, decisión de Nacho)
+SHURQ **sí expone** la tool `add_negative_asin` (crear negative product target: `account_id`, `mkp_id`,
+`asin`, `campaign_id`, `ad_group_id`, `level` → preview → `confirm_action`). **Pero por decisión de Nacho
+este skill NO auto-negativiza ASINs**: se **saltean** los ASINs de la lista (`asins_skipped[]`) y se
+reportan para revisión/push manual. No es una limitación técnica — es política. Si en el futuro Nacho quiere
+habilitarlo, el segundo loop sería `add_negative_asin(asin, campaign_id, ad_group_id, level)` por cada par
+destino, con el mismo patrón preview→`confirm_action` que las keywords. Hasta entonces, **no lo actives**.
 
 ---
 
@@ -300,4 +302,4 @@ campañas que solo contengan jabones sólidos: [lista]"*.
 - **Keyword > límites (80 chars / 4 palabras phrase / 10 exact)** → salteá; avisá cuáles.
 - **Preview expirado** → confirmaste tarde (>5 min). Re-preview y confirmá al toque.
 - **Guardrail bloqueó** → respetá el cap; no fuerces. Reportá el `reason`.
-- **ASIN en la lista de términos** → salteado (limitación SHURQ); reportalo en `asins_skipped`.
+- **ASIN en la lista de términos** → salteado (política: no auto-negativizamos ASINs); reportalo en `asins_skipped`.
