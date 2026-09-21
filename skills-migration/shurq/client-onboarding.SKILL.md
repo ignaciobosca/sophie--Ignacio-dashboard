@@ -2,16 +2,13 @@
 name: client-onboarding
 description: >
   Sophie Society client onboarding flow (V3 SHURQ). Creates or updates a client config in the Supabase
-  `public.clients` table, used by daily-check, weekly-report, weekly-wins, monthly-report and the rest of
-  the migrated skills. Trigger whenever Nacho says "onboard [BrandName]", "new client [BrandName]",
-  "add a client", "set up [brand]", "create the config for [brand]", or "update the onboarding for [brand]".
-  Also trigger automatically when any data-driven skill cannot find a config for the requested brand — in
-  that case, ask Nacho if he wants to run onboarding before continuing. Always use this skill when a client
-  config needs to be created or updated with fields like ACOS target, TACOS target, account stage,
-  shurq_account_id + amazon_marketplace, etc. También corre en modo REFRESH DE FICHA cuando Nacho dice
-  "actualizar ficha de [producto/ASIN] de [Brand]", "refrescar ficha de [Brand]", "update product fiche for
-  [Brand]", o pide re-jalar la ficha de producto de un listing que cambió — en ese modo re-jala el listing y
-  actualiza la ficha de relevancia sin rehacer el onboarding completo.
+  public.clients table, used by daily-check, weekly-report, weekly-wins, monthly-report and the other
+  migrated skills. Trigger on "onboard [Brand]", "new client [Brand]", "add a client", "set up [brand]",
+  "create/update the config for [brand]", or automatically when a data-driven skill can't find a config for
+  a brand (then ask before continuing). Captures fields like ACOS/TACOS target, account stage,
+  shurq_account_id + amazon_marketplace, managed and competitor ASINs. Also runs in FICHA-REFRESH mode on
+  "actualizar ficha de [ASIN] de [Brand]" / "update product fiche for [Brand]": re-pulls the listing and
+  updates the relevance profile without redoing the full onboarding.
 ---
 
 # Client Onboarding Skill
