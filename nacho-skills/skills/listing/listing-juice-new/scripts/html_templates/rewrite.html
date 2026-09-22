@@ -1,0 +1,30 @@
+<div class="rewrite {{TIER_CLASS}}">
+  <h5>{{FIELD_NAME}}</h5>
+
+  <div class="before">
+    <div class="label-mini">Current{{#HAS_CURRENT_META}} ({{CURRENT_META}}){{/HAS_CURRENT_META}}</div>
+    <div class="text">{{CURRENT_VALUE}}</div>
+  </div>
+
+  <div class="after">
+    <div class="label-row">
+      <div class="label-mini">Proposed{{#HAS_PROPOSED_META}} ({{PROPOSED_META}}){{/HAS_PROPOSED_META}}</div>
+      {{#HAS_PROPOSED}}<button type="button" class="copy-btn" data-copy="{{PROPOSED_VALUE_ATTR}}" onclick="ssCopy(this)">Copy</button>{{/HAS_PROPOSED}}
+    </div>
+    <div class="text">{{PROPOSED_VALUE}}</div>
+  </div>
+
+  <div class="evidence">
+    <strong>Why:</strong> {{EVIDENCE_TEXT}}
+  </div>
+
+  {{#HAS_ASSUMPTION}}
+  <div class="assumption">
+    <strong>⚠️ Verify before applying:</strong> {{ASSUMPTION_TEXT}}
+  </div>
+  {{/HAS_ASSUMPTION}}
+
+  {{#DID_NOT_SHIP}}
+  <div class="assumption"><strong>Not applied to flat file</strong> (current copy retained because the proposed version would have reduced keyword coverage).</div>
+  {{/DID_NOT_SHIP}}
+</div>

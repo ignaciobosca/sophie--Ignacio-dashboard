@@ -31,12 +31,21 @@ Feeders → Supabase (`dashboard_snapshots`) → composer → GitHub Pages.
 - `kw-harvester-negator` 🔧 (Sophie Hub)
 
 ### `skills/comms-workflow/` — comms y flujo diario
-- `client-reply-drafter` 🔧 (Sophie Hub), `slack-channel-review`, `inbox-triage`
+- `client-reply-drafter` 🔧, `client-onboarding` 🔧 (crea la config en Supabase), `slack-channel-review`, `inbox-triage`
 - `client-changelog` (mové la DB de Notion), `morning`, `personal-assistant-skill`
 
-### `skills/reporting/` — reporting 🔧 (dependen de Sophie Hub → rebuild)
-- `monthly-report`, `account-performance-dashboard`, `weekly-exec-summary-hub-v2`
-- Ver **`skills/reporting/REBUILD-NOTES.md`**: mapa tool-por-tool de Sophie Hub → SHURQ/Helium10/Keepa/DataDive y el gap de Subscribe & Save.
+### `skills/reporting/` — reporting 🔧 (rebuild)
+- `monthly-report`
+
+### `skills/listing/` — listing/creative 🔧 (rebuild)
+- `listing-juice-new` (rebuild pesado), `amazon-title-optimizer` (liviano)
+
+### `skills/research/` — research 🔧 (rebuild)
+- `bundle-crosssell-finder`
+
+> Las skills 🔧 que se rebuildean (y las que se descartaron) están en
+> **`docs/rebuild-decisions.md`**, con el mapa Sophie Hub → SHURQ/Helium10/Keepa/DataDive,
+> el orden de cutover y el gap de Subscribe & Save. Decidido una-por-una con Nacho.
 
 ## Antes de instalarlas
 Leé **`MIGRATION-NOTES.md`**: lista el find/replace concreto (canales de Slack,

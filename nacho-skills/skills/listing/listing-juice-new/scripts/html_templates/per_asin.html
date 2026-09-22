@@ -1,0 +1,165 @@
+<details {{OPEN_IF_FIRST}}>
+  <summary>
+    <span>{{ASIN}}, {{PRODUCT_NAME_SHORT}}</span>
+    {{#HAS_ASIN_CHIP}}<span class="asin-chip warn">{{ASIN_CHIP_TEXT}}</span>{{/HAS_ASIN_CHIP}}
+  </summary>
+  <div class="asin-body">
+
+    <!-- Nothing-to-change case -->
+    {{#NOTHING_TO_CHANGE}}
+    <div class="callout success">
+      <strong>This listing is already well-optimised.</strong>
+      No SQP funnel problems above threshold, no structured attribute gaps, no differentiated review objections. Rather than force synthetic rewrites, we're leaving the current copy in place. The scorecard is in the expandable section below for reference.
+    </div>
+    {{/NOTHING_TO_CHANGE}}
+
+    {{^NOTHING_TO_CHANGE}}
+
+    <!-- THE ONE THING -->
+    <div class="one-thing">
+      <div class="label-mini">What matters for this listing</div>
+      <h4>{{ONE_THING_HEADLINE}}</h4>
+      <p>{{ONE_THING_BODY}}</p>
+      <p><strong>Biggest lever:</strong> {{ONE_THING_LEVER}}</p>
+    </div>
+
+    <!-- Optional compliance callout -->
+    {{#HAS_COMPLIANCE_FLAG}}
+    <div class="callout critical">
+      <strong>⚠️ {{COMPLIANCE_FLAG_TITLE}}:</strong> {{COMPLIANCE_FLAG_BODY}}
+    </div>
+    {{/HAS_COMPLIANCE_FLAG}}
+
+    <!-- FUNNEL (if SQP) -->
+    {{#HAS_SQP}}
+    <h3>Your funnel, compared to the market</h3>
+    <p class="lede">How many times shoppers see your listing, then click, then buy. Orange = below market. Green = ahead.</p>
+    <div class="funnel-viz">
+      <div class="funnel-step "><div class="fs-label">Impressions</div><div class="fs-value">{{FUNNEL_IMPRESSIONS}}</div><div class="fs-compare ">{{FUNNEL_IMPRESSIONS_NOTE}}</div></div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-step {{FUNNEL_CLICKS_CLASS}}"><div class="fs-label">Clicks</div><div class="fs-value">{{FUNNEL_CLICKS}}</div><div class="fs-rate">{{FUNNEL_CTR}} CTR</div><div class="fs-compare {{FUNNEL_CTR_COMPARE_CLASS}}">{{FUNNEL_CTR_COMPARE}}</div></div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-step {{FUNNEL_PURCH_CLASS}}"><div class="fs-label">Purchases</div><div class="fs-value">{{FUNNEL_PURCHASES}}</div><div class="fs-rate">{{FUNNEL_CVR}} CVR</div><div class="fs-compare {{FUNNEL_CVR_COMPARE_CLASS}}">{{FUNNEL_CVR_COMPARE}}</div></div>
+    </div>
+    {{/HAS_SQP}}
+
+    <!-- WHAT WE'RE LOOKING AT -->
+    <h3>What we're looking at</h3>
+    <div class="card">
+      <ul class="kv-list">
+        {{WHAT_WE_SEE_ROWS}}
+      </ul>
+    </div>
+
+    <!-- COPY-LEVEL CHANGES -->
+    <h3>What we'd change (copy-level)</h3>
+
+    <h4>Title</h4>
+    {{TITLE_REWRITE_BLOCK}}
+
+    <!-- Optional: shorter compliant title (Amazon July 27 title update). Additive, only renders when supplied. -->
+    {{#HAS_TITLE_COMPLIANCE}}
+    <div class="callout warning" style="margin-top:12px;">
+      <strong>Shorter title option (Amazon's July 27 title update)</strong>
+      <p>{{TITLE_COMPLIANCE_INTRO}}</p>
+      <p><strong>Compliant title ({{TITLE_COMPLIANCE_CHARS}}):</strong> {{TITLE_COMPLIANCE_VALUE}} <button type="button" class="copy-btn" data-copy="{{TITLE_COMPLIANCE_VALUE_ATTR}}" onclick="ssCopy(this)">Copy</button></p>
+      <p>{{TITLE_COMPLIANCE_NOTE}}</p>
+    </div>
+    {{/HAS_TITLE_COMPLIANCE}}
+
+    <h4>Bullets</h4>
+    {{BULLET_REWRITE_BLOCKS}}
+
+    <h4>Description</h4>
+    {{DESCRIPTION_REWRITE_BLOCK}}
+
+    <h4>Backend keywords</h4>
+    {{BACKEND_REWRITE_BLOCK}}
+
+    <!-- ALWAYS-ON Sophie Society image + A+ Premium recommendations (Listing Juice).
+         Dedicated slot placed after the rewrites and before the structured attributes, where
+         image/A+ recommendations read naturally. Fed by sophie_recommendations_html via a raw
+         HTML string, NOT strict_structured_block. Renders on every run per SKILL.md Step 4b. -->
+    {{#HAS_SOPHIE_BLOCKS}}
+    <h3>Image &amp; A+ Premium recommendations (Sophie Society)</h3>
+    {{SOPHIE_BLOCKS}}
+    {{/HAS_SOPHIE_BLOCKS}}
+
+    <h4>Structured attributes, safe to apply now</h4>
+    {{STRICT_STRUCTURED_BLOCK}}
+
+    {{#HAS_ADVISORY}}
+    <h4>Structured attributes, needs verification</h4>
+    {{ADVISORY_STRUCTURED_BLOCK}}
+    {{/HAS_ADVISORY}}
+
+    {{#HAS_COLLAPSED_STRUCTURED}}
+    <details class="optional-section" style="margin-top: 16px;">
+      <summary>Attributes already correct or not applicable (click to expand)</summary>
+      <div class="asin-body">
+        <p class="lede">These category-relevant attributes need no action, they're already correct on the listing or don't apply to this category. Shown for completeness.</p>
+        {{COLLAPSED_STRUCTURED_BLOCK}}
+      </div>
+    </details>
+    {{/HAS_COLLAPSED_STRUCTURED}}
+
+    {{#HAS_CLAIMS_TO_VERIFY}}
+    <h4>Claims to verify before applying</h4>
+    <div class="callout warning">
+      <ul style="margin-bottom: 0;">{{CLAIMS_TO_VERIFY_LIST}}</ul>
+    </div>
+    {{/HAS_CLAIMS_TO_VERIFY}}
+
+    {{/NOTHING_TO_CHANGE}}
+
+    <!-- COLLAPSIBLE: 15-DIM ALEXA SCORECARD -->
+    <details class="optional-section" style="margin-top: 32px;">
+      <summary>More detail, the 15-dimension Alexa Shopping scorecard</summary>
+      <div class="asin-body">
+        <p class="lede">Alexa Shopping matches products to shoppers across 15 intent dimensions. Priority reflects how often each dimension shows up in your top converting searches.</p>
+        <table>
+          <thead><tr><th>Dimension</th><th>Now</th><th>After rewrite</th><th>Priority</th><th>Why it matters here</th></tr></thead>
+          <tbody>
+            {{COSMO_ROWS}}
+          </tbody>
+        </table>
+        <p style="font-size: 14px; margin-top: 16px;"><strong>Total:</strong> current <strong>{{ALEXA_SCORE}}/{{ALEXA_TOTAL}}</strong>, proposed <strong>{{ALEXA_PROPOSED_SCORE}}/{{ALEXA_TOTAL}}</strong>. N/A dimensions aren't counted.</p>
+      </div>
+    </details>
+
+    {{#HAS_SQP}}
+    <details class="optional-section">
+      <summary>More detail, search query strengths and weaknesses</summary>
+      <div class="asin-body">
+        <p class="lede">Your listing appears on specific shopper searches. Here's where the funnel breaks down and where it's strong.</p>
+        {{SQP_BUCKET_TABLES}}
+      </div>
+    </details>
+    {{/HAS_SQP}}
+
+    {{#HAS_REVIEWS}}
+    <details class="optional-section">
+      <summary>More detail, what customers are telling you</summary>
+      <div class="asin-body">
+        {{REVIEW_ANALYSIS}}
+      </div>
+    </details>
+    {{/HAS_REVIEWS}}
+
+    {{#HAS_XRAY}}
+    <details class="optional-section">
+      <summary>More detail, how you stack up against competitors</summary>
+      <div class="asin-body">
+        {{COMPETITIVE_ANALYSIS}}
+      </div>
+    </details>
+    {{/HAS_XRAY}}
+
+    <!-- PRODUCT FACTS (image-generation handover). V9: quiet, collapsed-by-default, last in
+         the section so it sits out of the seller's reading flow. Only renders when supplied. -->
+    {{#HAS_PRODUCT_FACTS}}
+    {{PRODUCT_FACTS_BLOCK}}
+    {{/HAS_PRODUCT_FACTS}}
+
+  </div>
+</details>
