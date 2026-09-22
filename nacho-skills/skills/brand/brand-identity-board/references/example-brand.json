@@ -1,0 +1,99 @@
+{
+  "asin": "B07XJ8C8F5",
+  "status": "CONFIRMED 2026-06-30 — palette, fonts, voice and claims approved by brand owner",
+  "brand": {
+    "name": "Verdant Grove",
+    "casing": "titlecase",
+    "tagline_or_suffix": "PURE BOTANICALS",
+    "category": "cold-pressed argan hair oil for dry and textured hair",
+    "mood": ["botanical", "warm", "premium", "calm"],
+    "audience": "women 28-45 with textured or dry hair seeking clean, salon-grade care"
+  },
+  "voice": {
+    "adjectives": ["nurturing", "grounded", "confident"],
+    "sounds_like": [
+      "Built for real hair, not a lab fantasy.",
+      "Slow beauty, done right."
+    ],
+    "never_sounds_like": [
+      "Miracle cure!",
+      "Beats every salon brand",
+      "Doctor-recommended"
+    ],
+    "reading_level": "grade 7, short sentences",
+    "pov": "we / you"
+  },
+  "claims": {
+    "required": [
+      "Cruelty-free",
+      "Cold-pressed argan oil",
+      "Made without parabens or silicones"
+    ],
+    "forbidden": [
+      "medical / treats conditions",
+      "superlatives (best, #1)",
+      "competitor comparisons",
+      "allergen-free"
+    ],
+    "disclaimers": [
+      "Results vary. For external use only."
+    ]
+  },
+  "logo": {
+    "style": "serif wordmark with a hand-drawn leaf ligature on the V, espresso green on cream",
+    "monogram": "single leaf mark used as a stamp",
+    "case": "titlecase",
+    "prefers_dark_bg": false,
+    "asset": "/creative-brief/B07XJ8C8F5/assets/logo.png",
+    "status": "FINAL"
+  },
+  "fonts": {
+    "special": {
+      "name": "Cormorant Garamond",
+      "role": "display",
+      "caps_only": false,
+      "google": { "available": true, "family_slug": "cormorant-garamond", "weights": [500, 600] },
+      "file": null,
+      "license": "OFL (commercial-safe)"
+    },
+    "main": {
+      "name": "Inter",
+      "role": "body",
+      "caps_only": false,
+      "google": { "available": true, "family_slug": "inter", "weights": [400, 600] },
+      "file": null,
+      "license": "OFL (commercial-safe)"
+    }
+  },
+  "palette": {
+    "lightest": "#F4ECDD",
+    "slot2": "#CBA77A",
+    "slot3": "#8C6A3F",
+    "dark": "#3E4A33",
+    "darkest": "#1C1A12",
+    "accent_primary": "slot3",
+    "_note": "Extracted visually from packaging photo, normalized lightest -> darkest."
+  },
+  "moodboard": {
+    "keywords": ["natural light", "warm earth tones", "real hair texture"],
+    "hero": "amber argan-oil bottle on warm stone, soft directional studio light, botanical props beside it, label removed",
+    "lifestyle": "woman applying oil to damp hair in a sunlit bathroom, natural skin, calm, warm neutral backdrop",
+    "context": "botanical flat-lay: argan nuts, dried leaves, linen, brand earth tones present in frame",
+    "closeup": "macro of an oil droplet catching light on a single hair strand, warm sheen",
+    "grading": "warm golden grade, cream and earth tones, brand greens present subtly in every frame; neutral flat-but-catchy commercial style"
+  },
+  "patterns": [
+    {
+      "motif": "fine line-drawn argan-leaf lattice, thin espresso strokes on cream",
+      "tonality": "light"
+    },
+    {
+      "motif": "the same leaf lattice in soft gold on deep bark brown",
+      "tonality": "dark"
+    }
+  ],
+  "imagery_direction": {
+    "lean_in": ["natural light", "warm earth tones", "real hair texture", "botanical props"],
+    "avoid": ["clinical white labs", "neon / oversaturation", "stock-photo smiles", "visible text in frame"]
+  }
+}

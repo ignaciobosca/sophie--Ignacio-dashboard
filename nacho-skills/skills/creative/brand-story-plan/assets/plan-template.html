@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brand Story Plan — {{BRAND_NAME}}</title>
+<!--
+  HOW TO USE THIS TEMPLATE
+  - This is the Sophie Society design system, trimmed for a Brand Story plan.
+  - Duplicate the <section class="element"> block once per element:
+      1. Desktop Background   2. Mobile Background
+      3–9. The 7 cards (Company Story, Founder Highlight, Product Showcase,
+           Individual Value, Quote + Powerful Visual, Customer Testimonial & Case Study,
+           Design-Centered Imagery)
+  - Fill copy, the image-generation prompt (verbatim in the <pre>), the spec pills, and the
+    compliance note. Delete these comments and all {{PLACEHOLDERS}} before delivering.
+  - Keep it SHORT — this is a build plan, not an audit. One tight screen per element.
+-->
+<style>
+  :root { --navy:#0A2333; --off-white:#F3F3F1; --white:#FFF; --text:#212121; --text-secondary:#666;
+    --green:#13835B; --orange:#EA6C34; --peach:#F9C8A5; --light-peach:#FDE5CF; --light-blue:#C2D9E6;
+    --soft-cream:#FAF9F5; --border:#E6E6E6; --r-sm:4px; --r-md:8px; --r-lg:12px; }
+  * { box-sizing:border-box; }
+  body { font-family:'Inter','DM Sans',-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;
+    background:var(--off-white); color:var(--text); font-size:16px; line-height:1.6; margin:0; }
+  .container { max-width:1000px; margin:0 auto; padding:40px 28px; }
+  header { background:var(--navy); color:var(--white); padding:40px 28px; }
+  header .inner { max-width:1000px; margin:0 auto; }
+  header .eyebrow { font-size:12px; color:var(--peach); text-transform:uppercase; letter-spacing:.12em; font-weight:700; margin-bottom:8px; }
+  header h1 { margin:0 0 4px 0; font-size:30px; line-height:1.15; }
+  header .subtitle { opacity:.85; font-size:15px; }
+  h2 { font-size:26px; font-weight:700; color:var(--navy); margin:8px 0 4px 0; }
+  h3 { font-size:20px; font-weight:700; color:var(--navy); margin:0 0 4px 0; }
+  .card { background:var(--white); border:1px solid var(--border); border-radius:var(--r-lg); padding:22px 26px; margin:16px 0; box-shadow:0 2px 8px rgba(10,35,51,.08); }
+  .element { margin:28px 0; }
+  .element-head { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+  .num { background:var(--navy); color:var(--white); font-size:14px; font-weight:700; width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .element.bg .num { background:var(--orange); }
+  .module-tag { font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.08em; font-weight:700; }
+  .pill { display:inline-block; padding:3px 11px; border-radius:999px; font-size:12px; font-weight:700; letter-spacing:.03em; margin:2px 4px 2px 0; }
+  .pill.dim { background:var(--light-blue); color:var(--navy); }
+  .pill.layout { background:var(--soft-cream); color:var(--text-secondary); border:1px solid var(--border); }
+  .pill.icons { background:var(--light-peach); color:#8b5a00; }
+  .copy-block { background:var(--soft-cream); border-left:4px solid var(--green); padding:14px 18px; border-radius:0 var(--r-md) var(--r-md) 0; margin:12px 0; }
+  .copy-block .label-mini { font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.06em; font-weight:700; margin-bottom:4px; }
+  .copy-block .headline { font-size:17px; font-weight:700; color:var(--navy); }
+  .copy-block .body { font-size:15px; }
+  .copy-block .count { font-size:12px; color:var(--text-secondary); margin-top:6px; }
+  pre { background:var(--navy); color:#e8eef2; padding:16px 18px; border-radius:var(--r-md); overflow-x:auto; font-family:'SF Mono',Monaco,'Courier New',monospace; font-size:13px; line-height:1.55; white-space:pre-wrap; }
+  .callout { padding:12px 16px; border-radius:var(--r-md); margin:12px 0; font-size:14px; }
+  .callout.success { background:#e6f4ee; border:1px solid var(--green); color:var(--green); }
+  .callout.warning { background:#fff7e6; border:1px solid var(--orange); color:#8b5a00; }
+  .callout.info { background:var(--light-blue); border:1px solid #a8c5d6; color:var(--navy); }
+  footer { background:var(--navy); color:var(--white); padding:32px 28px; margin-top:48px; font-size:13px; }
+  footer .inner { max-width:1000px; margin:0 auto; opacity:.75; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <div class="eyebrow">Amazon Brand Story · Build Plan</div>
+    <h1>{{BRAND_NAME}} — Brand Story Plan</h1>
+    <div class="subtitle">{{PRODUCT / CATEGORY}} · Generated {{DATE}}</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Short orientation: the story arc in 2–3 sentences + how to read the plan. Keep it tight. -->
+  <div class="card">
+    <h2>The story we're telling</h2>
+    <p>{{2–3 sentences: the through-line across the cards — where the brand starts, what it stands for, and the feeling a shopper should leave with.}}</p>
+    <div class="callout info">Category screened for compliance: <strong>{{CATEGORY}}</strong>. All copy below has been checked against the restricted-keywords list for A+ / Infographic contexts.</div>
+    <div class="callout warning"><strong>How to use these prompts.</strong> Each prompt needs a picture of your product to work — the text alone won't know what it looks like. For every card: <strong>paste the prompt AND attach your product photo</strong> (the main listing image at minimum; add raw angle shots for the product/hero cards). Paste into an image model that accepts a reference image — <strong>Higgsfield</strong> (<code>nano_banana_pro</code> supports every ratio: <strong>desktop bg 21:9, mobile bg 3:4, cards 4:5</strong>; <code>gpt_image_2</code> has the sharpest text but no 21:9/4:5 — use <strong>16:9 for the desktop bg and 3:4 for cards</strong>) or <strong>ChatGPT / GPT Image</strong> or <strong>Google Nano Banana</strong>. Generate at ≥1K (2K ideal), then export/crop to the Amazon sizes noted on each card.</div>
+  </div>
+
+  <!-- ============ ELEMENT BLOCK (duplicate per element) ============ -->
+  <section class="element bg">
+    <div class="element-head">
+      <span class="num">1</span>
+      <div>
+        <h3>Desktop Background</h3>
+        <span class="module-tag">Background · behind the whole strip</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="pill dim">1464 × 625 px min</span>
+      <span class="pill layout">Layout: {{layout name #}}</span>
+      <span class="pill icons">Icons: {{style or none}}</span>
+
+      <div class="copy-block">
+        <div class="label-mini">Overlay copy (optional)</div>
+        <div class="headline">{{brand name / 3–5 word tagline, or "None — imagery only"}}</div>
+      </div>
+
+      <div class="label-mini" style="margin:14px 0 6px; font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Image-generation prompt</div>
+      <pre>{{PASTE THE FULL STEP 1 / STEP 2 PROMPT HERE, VERBATIM}}</pre>
+
+      <div class="callout success">✓ Compliance: no restricted terms. {{Note any swaps made, or "clean".}}</div>
+    </div>
+  </section>
+  <!-- ============ END ELEMENT BLOCK ============ -->
+
+  <!-- Repeat for: Mobile Background (463 × 625), then the 7 cards.
+       For a Brand Focus Image card use the 362 × 453 pill and show Headline + Body copy blocks.
+       For a Brand Q&A card show Question + Answer with 600/600 counts.
+       For Brand ASIN & Store Showcase list the 4 ASINs + section heading + "Shop all". -->
+
+</div>
+
+<footer>
+  <div class="inner">
+    Brand Story plan for {{BRAND_NAME}} · Prepared with the brand-story-plan skill ·
+    Dimensions are Amazon minimums; images briefed at ≥1K. Review copy against live category rules before upload.
+  </div>
+</footer>
+
+</body>
+</html>

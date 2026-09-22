@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- FILL: replace every {{TOKEN}} from the brand identity JSON.
+     Main font from Google Fonts (swap family name in the href) or add a second @font-face.
+     LOGO: if a logo IMAGE is supplied, use the .logo-img <img src="{{LOGO_IMAGE}}">
+     path in S1 and BOTH S2 blocks and DELETE the .wordmark text path — never
+     re-typeset the wordmark in the board fonts. Use the .wordmark text path ONLY
+     when no logo image exists (placeholder mode). For a light-on-dark S2 block
+     with a single-color logo you may add class="logo-invert" as a fallback.
+     PLACEHOLDER MODE: leave .ph divs with .slot/.brief text, and pattern bands
+     with their .corner-caption child, until assets exist.
+     ASSET MODE: give each .ph a background-image and delete its .slot/.brief children;
+     for pattern bands set the section background-image and delete the .corner-caption
+     (the only placeholder element left on a pattern band) so nothing overlaps the artwork
+     (see the swap-in instructions in SKILL.md Phase 4).
+     VOICE & CLAIMS: fill the pills and lines from the brand kit's voice{} and claims{}
+     objects. These are pure HTML/CSS text sections — no image generation needed. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family={{MAIN_FONT_GOOGLE}}:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  @font-face {
+    font-family: "SpecialFont";
+    src: url("{{SPECIAL_FONT_FILE}}") format("truetype");
+    /* variable font rendering odd? see template-spec.md fvar parser, then add
+       font-variation-settings on .f-special */
+  }
+  :root {
+    --lightest: {{HEX_LIGHTEST}};
+    --slot2: {{HEX_SLOT2}};
+    --slot3: {{HEX_SLOT3}};
+    --dark: {{HEX_DARK}};
+    --darkest: {{HEX_DARKEST}};
+    --accent: {{HEX_ACCENT_PRIMARY}}; /* the hero accent slot */
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1480px; font-family: "{{MAIN_FONT_NAME}}", sans-serif; background: #fff; color: var(--darkest); }
+  section { position: relative; overflow: hidden; }
+
+  .tag {
+    position: absolute; top: 16px; right: 16px; z-index: 5;
+    font-size: 15px; letter-spacing: 2px; color: #999;
+    border: 1px dashed #bbb; border-radius: 6px; padding: 5px 12px;
+    background: rgba(255,255,255,.65);
+  }
+
+  /* Logo image — used directly when a logo file is supplied. Never re-typeset
+     the wordmark in the board fonts; the .wordmark text path is no-logo only.
+     .logo-invert is a fallback for a light-on-dark variation of a 1-color logo. */
+  .logo-img { display: block; max-width: 70%; max-height: 70%; object-fit: contain; }
+  .logo-invert { filter: invert(1); }
+
+  /* S1 logo header — use the .logo-img path when a logo file exists, else .wordmark */
+  .s1 { height: 360px; background: var(--lightest); display: flex; align-items: center; justify-content: center; }
+  .wordmark { text-align: center; }
+  .wordmark .script { font-family: Georgia, serif; font-style: italic; font-size: 150px; letter-spacing: 4px; color: var(--darkest); line-height: 1; }
+  .wordmark .sub { display: flex; align-items: center; gap: 26px; justify-content: center; margin-top: 26px; }
+  .wordmark .sub .rule { height: 7px; width: 170px; background: var(--accent); }
+  .wordmark .sub .txt { font-weight: 500; font-size: 34px; letter-spacing: 14px; color: var(--darkest); }
+  .wm-white .script, .wm-white .sub .txt { color: var(--lightest); }
+  .wm-white .sub .rule { background: var(--lightest); }
+
+  /* S2 logo variations */
+  .s2 { height: 260px; display: flex; }
+  .s2 .block { width: 50%; display: flex; align-items: center; justify-content: center; }
+  .s2 .wordmark .script { font-size: 92px; }
+  .s2 .wordmark .sub { margin-top: 14px; gap: 16px; }
+  .s2 .wordmark .sub .rule { width: 100px; height: 4px; }
+  .s2 .wordmark .sub .txt { font-size: 21px; letter-spacing: 9px; }
+
+  /* S3 fonts */
+  .s3 { height: 300px; background: #fff; padding-top: 40px; }
+  .s3 .label { text-align: center; font-size: 24px; letter-spacing: 12px; font-weight: 500; color: var(--slot3); }
+  .s3 .label { margin-bottom: 34px; }
+  .s3 .cols { display: flex; justify-content: center; }
+  .s3 .col { width: 480px; padding: 0 60px; text-align: left; }
+  .s3 .divider { width: 1px; background: #ddd; }
+  .s3 .micro { font-size: 14px; letter-spacing: 3px; color: #9a9a9a; font-weight: 500; margin-bottom: 10px; }
+  .s3 .spec-row { display: flex; align-items: baseline; gap: 28px; margin-bottom: 22px; }
+  .s3 .aa { font-size: 64px; line-height: 1; }
+  .s3 .fname { font-size: 30px; }
+  .s3 .alphabet { font-size: 17px; letter-spacing: 3px; line-height: 1.8; }
+  .f-special { font-family: "SpecialFont", sans-serif; }
+  .f-main { font-family: "{{MAIN_FONT_NAME}}", sans-serif; }
+
+  /* S4 palette */
+  .s4 { height: 280px; background: #fff; display: flex; align-items: center; justify-content: center; gap: 90px; }
+  .swatch { text-align: center; }
+  .swatch .circle { width: 140px; height: 140px; border-radius: 50%; margin: 0 auto 20px; }
+  .swatch .hex { font-size: 19px; letter-spacing: 3px; color: #8a8a8a; }
+
+  /* S5 moodboard — grid container clips any image to its cell; overflow:hidden
+     guarantees nothing bleeds past the page edge even if an image is mis-placed. */
+  .s5 { height: 900px; background: #fff; display: flex; gap: 12px; overflow: hidden; }
+  .s5 .colA { width: 32%; display: flex; flex-direction: column; gap: 12px; }
+  .s5 .colB { width: 33%; }
+  .s5 .colC { width: 35%; display: flex; flex-direction: column; gap: 12px; }
+  /* Every cell clips its own content/background so an image can never spill out
+     of its rectangle (no negative-x bleed); cells stretch to fill their column. */
+  .ph { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 30px;
+        background-position: center; background-size: cover; background-repeat: no-repeat; }
+  .ph .brief { font-size: 17px; line-height: 1.55; color: rgba(0,0,0,.6); text-align: center; max-width: 360px; }
+  .ph .slot { position: absolute; top: 14px; left: 16px; font-size: 14px; letter-spacing: 3px; font-weight: 600; color: rgba(0,0,0,.45); }
+  /* col A is a single full-height hero (no filler chip row); columns now divide
+     their height evenly so the grid fills cleanly with no leftover gap. */
+  .hero-ph { flex: 1; background-color: #eee; }
+  .life-ph { height: 100%; background-color: #e8e8e8; }
+  .ctx-ph { flex: 1; background-color: #ededed; }
+  .close-ph { flex: 1; background-color: #e5e5e5; }
+
+  /* S6 Voice & Tone — text-only section, token-driven from voice{} */
+  .s6v { background: #fff; padding: 44px 90px 48px; }
+  .s6v .label { text-align: center; font-size: 24px; letter-spacing: 12px; font-weight: 500; margin-bottom: 30px; color: var(--slot3); }
+  .pillrow { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-bottom: 30px; }
+  .pill { font-size: 20px; letter-spacing: 1px; padding: 12px 26px; border-radius: 999px;
+          background: var(--lightest); color: var(--darkest); border: 1px solid var(--slot2); }
+  .pill.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .vt-lines { display: flex; gap: 28px; }
+  /* Each column is a tinted card panel (like the guardrail box) so the lists read
+     as designed panels, not raw lines. The positive "SOUNDS LIKE" card uses the
+     light warm fill + accent rule; the avoid card stays a neutral muted panel. */
+  .vt-col { flex: 1; border-radius: 12px; padding: 24px 28px; }
+  .vt-col.lean { background: var(--lightest); border: 1px solid var(--slot2); border-top: 4px solid var(--accent); }
+  .vt-col.avoid { background: #f6f6f4; border: 1px solid #e3e3df; border-top: 4px solid var(--dark); }
+  .vt-col .head { font-size: 14px; letter-spacing: 3px; color: #9a9a9a; font-weight: 600; margin-bottom: 14px; }
+  .vt-col.lean .head { color: var(--slot3); }
+  .vt-col.avoid .head { color: var(--dark); }
+  .vt-col ul { list-style: none; }
+  .vt-col li { font-size: 18px; line-height: 1.5; margin-bottom: 8px; color: var(--darkest); }
+  .vt-col.lean li::before { content: "+ "; color: var(--accent); font-weight: 700; }
+  .vt-col.avoid li::before { content: "\00d7  "; color: var(--dark); font-weight: 700; }
+  .vt-meta { margin-top: 24px; text-align: center; font-size: 16px; color: #6a6a6a; letter-spacing: 1px; }
+  .vt-meta b { color: var(--darkest); font-weight: 600; }
+
+  /* S7 Claims — required claims as pills + a flagged guardrail box */
+  .s7c { background: #fff; padding: 44px 90px 52px; }
+  .s7c .label { text-align: center; font-size: 24px; letter-spacing: 12px; font-weight: 500; margin-bottom: 28px; color: var(--slot3); }
+  .s7c .sub { text-align: center; font-size: 14px; letter-spacing: 3px; color: #9a9a9a; font-weight: 600; margin-bottom: 16px; }
+  /* "SAY THIS" positive card — tinted panel (like the guardrail) so the usable
+     claims read as a designed, approved set. Warm accent top rule ties to header. */
+  .say-card { border-radius: 12px; background: var(--lightest); border: 1px solid var(--slot2);
+              border-top: 4px solid var(--accent); padding: 24px 30px 28px; margin-bottom: 18px; }
+  .say-card .sub { margin-bottom: 16px; }
+  .say-card .pillrow { margin-bottom: 0; }
+  .guardrail { border: 2px solid var(--accent); border-radius: 12px; background: var(--lightest); padding: 26px 30px; margin-top: 12px; }
+  .guardrail .gr-head { font-size: 15px; letter-spacing: 3px; color: var(--accent); font-weight: 700; margin-bottom: 14px; }
+  .guardrail ul { list-style: none; margin-bottom: 18px; }
+  .guardrail li { font-size: 18px; line-height: 1.5; margin-bottom: 8px; color: var(--darkest); }
+  .guardrail ul.forbidden li::before { content: "\2715  "; color: var(--accent); font-weight: 700; }
+  .guardrail .gr-disc { font-size: 16px; color: #6a6a6a; line-height: 1.5; border-top: 1px solid var(--slot2); padding-top: 14px; }
+  .guardrail .gr-disc b { color: var(--darkest); font-weight: 600; letter-spacing: 2px; }
+
+  /* S8 + S9 pattern bands — set background url when assets exist.
+     The band carries NO centered overlay label (a recurring overlap bug). The
+     only placeholder element is a small CORNER caption shown in the un-generated
+     state; on fill, set the section background-image and DELETE .corner-caption. */
+  .s8 { height: 700px; background: var(--slot2); position: relative; background-position: center; background-size: cover; }
+  .s9 { height: 460px; background: var(--slot3); position: relative; background-position: center; background-size: cover; }
+  .corner-caption { position: absolute; bottom: 14px; left: 18px; font-size: 13px; letter-spacing: 2px;
+                    font-weight: 600; color: rgba(0,0,0,.5); background: rgba(255,255,255,.65);
+                    border: 1px dashed #bbb; border-radius: 6px; padding: 4px 10px; }
+</style>
+</head>
+<body>
+
+<section class="s1">
+  <!-- LOGO IMAGE PATH (use when a logo file exists): keep only this img and DELETE
+       the .tag + .wordmark below. Never re-typeset the wordmark in the board fonts. -->
+  <img class="logo-img" src="{{LOGO_IMAGE}}" alt="{{BRAND_NAME}} logo">
+  <!-- NO-LOGO PLACEHOLDER PATH (delete when a logo image is supplied): -->
+  <div class="tag">LOGO PLACEHOLDER — awaiting logo file</div>
+  <div class="wordmark">
+    <div class="script">{{BRAND_NAME}}</div>
+    <div class="sub"><div class="rule"></div><div class="txt">{{BRAND_SUFFIX}}</div><div class="rule"></div></div>
+  </div>
+</section>
+
+<section class="s2">
+  <!-- LOGO IMAGE PATH (use when a logo file exists): keep the .logo-img in each
+       block and DELETE that block's .wordmark. Pick backgrounds that suit the
+       logo's colors. For a light-on-dark block with a single-color logo, add
+       class="logo-invert" as a fallback. Never re-typeset the wordmark. -->
+  <div class="block" style="background: var(--accent);">
+    <img class="logo-img" src="{{LOGO_IMAGE}}" alt="{{BRAND_NAME}} logo">
+    <!-- NO-LOGO PLACEHOLDER PATH (delete when a logo image is supplied): -->
+    <div class="wordmark wm-white">
+      <div class="script">{{BRAND_NAME}}</div>
+      <div class="sub"><div class="rule"></div><div class="txt">{{BRAND_SUFFIX}}</div><div class="rule"></div></div>
+    </div>
+  </div>
+  <div class="block" style="background: var(--dark);">
+    <img class="logo-img logo-invert" src="{{LOGO_IMAGE}}" alt="{{BRAND_NAME}} logo">
+    <!-- NO-LOGO PLACEHOLDER PATH (delete when a logo image is supplied): -->
+    <div class="wordmark wm-white">
+      <div class="script">{{BRAND_NAME}}</div>
+      <div class="sub"><div class="rule"></div><div class="txt">{{BRAND_SUFFIX}}</div><div class="rule"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="s3">
+  <div class="label">F O N T S</div>
+  <div class="cols">
+    <div class="col">
+      <div class="micro">SPECIAL FONT</div>
+      <div class="spec-row"><span class="aa f-special">Aa</span><span class="fname f-special">{{SPECIAL_FONT_NAME}}</span></div>
+      <div class="alphabet f-special">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>1234567890</div>
+      <!-- caps-only font? delete the lowercase line above -->
+    </div>
+    <div class="divider"></div>
+    <div class="col">
+      <div class="micro">MAIN FONT</div>
+      <div class="spec-row"><span class="aa f-main">Aa</span><span class="fname f-main">{{MAIN_FONT_NAME}}</span></div>
+      <div class="alphabet f-main">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>1234567890</div>
+    </div>
+  </div>
+</section>
+
+<section class="s4">
+  <div class="swatch"><div class="circle" style="background:{{HEX_LIGHTEST}}; border:1px solid #ddd;"></div><div class="hex">{{HEX_LIGHTEST}}</div></div>
+  <div class="swatch"><div class="circle" style="background:{{HEX_SLOT2}};"></div><div class="hex">{{HEX_SLOT2}}</div></div>
+  <div class="swatch"><div class="circle" style="background:{{HEX_SLOT3}};"></div><div class="hex">{{HEX_SLOT3}}</div></div>
+  <div class="swatch"><div class="circle" style="background:{{HEX_DARK}};"></div><div class="hex">{{HEX_DARK}}</div></div>
+  <div class="swatch"><div class="circle" style="background:{{HEX_DARKEST}};"></div><div class="hex">{{HEX_DARKEST}}</div></div>
+</section>
+
+<section class="s5">
+  <div class="colA">
+    <div class="ph hero-ph">
+      <div class="slot">HERO — TO GENERATE</div>
+      <div class="brief">{{HERO_BRIEF}}</div>
+    </div>
+  </div>
+  <div class="colB">
+    <div class="ph life-ph">
+      <div class="slot">LIFESTYLE — TO GENERATE</div>
+      <div class="brief">{{LIFESTYLE_BRIEF}}</div>
+    </div>
+  </div>
+  <div class="colC">
+    <div class="ph ctx-ph">
+      <div class="slot">CONTEXT — TO GENERATE</div>
+      <div class="brief">{{CONTEXT_BRIEF}}</div>
+    </div>
+    <div class="ph close-ph">
+      <div class="slot">CLOSE-UP — TO GENERATE</div>
+      <div class="brief">{{CLOSEUP_BRIEF}}</div>
+    </div>
+  </div>
+</section>
+
+<section class="s6v">
+  <div class="label">V O I C E   &amp;   T O N E</div>
+  <!-- adjectives from voice.adjectives[] -->
+  <div class="pillrow">
+    <!-- REPEAT this pill for each voice.adjectives[] entry (the row wraps to multiple lines);
+         keep the "accent" class on the FIRST pill only, plain "pill" for the rest -->
+    <span class="pill accent">{{VOICE_ADJ}}</span>
+  </div>
+  <div class="vt-lines">
+    <div class="vt-col lean">
+      <div class="head">SOUNDS LIKE</div>
+      <ul>
+        <!-- REPEAT this line for each voice.sounds_like[] entry -->
+        <li>{{VOICE_SOUNDS_LIKE}}</li>
+      </ul>
+    </div>
+    <div class="vt-col avoid">
+      <div class="head">NEVER SOUNDS LIKE</div>
+      <ul>
+        <!-- REPEAT this line for each voice.never_sounds_like[] entry -->
+        <li>{{VOICE_NEVER}}</li>
+      </ul>
+    </div>
+  </div>
+  <div class="vt-meta">Reading level: <b>{{VOICE_READING_LEVEL}}</b> &nbsp;&middot;&nbsp; Point of view: <b>{{VOICE_POV}}</b></div>
+</section>
+
+<section class="s7c">
+  <div class="label">C L A I M S</div>
+  <!-- required claims from claims.required[] — shown on the tinted "SAY THIS" card -->
+  <div class="say-card">
+    <div class="sub">SAY THIS</div>
+    <div class="pillrow">
+      <!-- REPEAT this pill for each claims.required[] entry (the row wraps to multiple lines) -->
+      <span class="pill accent">{{CLAIM_REQUIRED}}</span>
+    </div>
+  </div>
+  <!-- forbidden claims + disclaimers in a flagged guardrail box -->
+  <div class="guardrail">
+    <div class="gr-head">&#9888;  NEVER CLAIM</div>
+    <ul class="forbidden">
+      <!-- REPEAT this line for each claims.forbidden[] entry (the list grows vertically) -->
+      <li>{{CLAIM_FORBIDDEN}}</li>
+    </ul>
+    <!-- REPEAT this line for each claims.disclaimers[] entry; omit the whole block if none -->
+    <div class="gr-disc"><b>DISCLAIMER</b> &nbsp; {{CLAIM_DISCLAIMER}}</div>
+  </div>
+</section>
+
+<section class="s8">
+  <!-- ASSET MODE: set this section's background-image to the Pattern A url and DELETE
+       .corner-caption. The band has NO centered label that could overlap the artwork. -->
+  <div class="corner-caption">PATTERN A — to generate</div>
+</section>
+
+<section class="s9">
+  <!-- ASSET MODE: set this section's background-image to the Pattern B url and DELETE
+       .corner-caption. The band has NO centered label that could overlap the artwork. -->
+  <div class="corner-caption">PATTERN B — to generate</div>
+</section>
+
+</body>
+</html>

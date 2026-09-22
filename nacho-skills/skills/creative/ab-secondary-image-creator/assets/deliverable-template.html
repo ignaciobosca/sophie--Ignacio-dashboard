@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{BRAND_NAME}} · {{PRODUCT_NAME}} · Secondary Image Refresh · {{DATE}}</title>
+<style>
+  :root {
+    --bg: #FAFAF7;
+    --card: #FFFFFF;
+    --text: #1A1A1A;
+    --text-secondary: #6B6B6B;
+    --text-muted: #999999;
+    --border: #E8E6E1;
+    --border-strong: #D6D3CC;
+    --accent: #EA6C34;
+    --link: #0B4A78;
+    /* Brand palette variables — substituted per-run from the brand kit */
+    --brand-cream: {{BRAND_HEX_1}};
+    --brand-tan: {{BRAND_HEX_2}};
+    --brand-mid: {{BRAND_HEX_3}};
+    --brand-deep: {{BRAND_HEX_4}};
+    --brand-dark: {{BRAND_HEX_5}};
+    --radius: 4px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.55;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 48px 32px 80px 32px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }
+  @media (max-width: 960px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; gap: 16px; } }
+  .full-width-block { max-width: 900px; margin-left: auto; margin-right: auto; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .brand-strip {
+    font-size: 12px;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-strip .dot { color: var(--text-muted); margin: 0 6px; }
+  h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0 0 12px 0;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 4px 0 2px 0;
+  }
+  .meta .dot { color: var(--text-muted); margin: 0 6px; }
+  .meta.tech { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+  .meta.tech code { font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 11.5px; background: var(--brand-cream); padding: 1px 5px; border-radius: 3px; }
+
+  h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 48px 0 12px 0;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  p { margin: 8px 0 12px 0; }
+  .lede { color: var(--text-secondary); font-size: 14.5px; margin-bottom: 8px; }
+  .lede strong { color: var(--text); }
+
+  .slot {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px 18px 18px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .slot-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--text);
+    letter-spacing: -0.005em;
+  }
+  .slot-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    background: var(--text);
+    color: var(--card);
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .slot-img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    background: var(--brand-cream);
+    border-radius: 3px;
+    margin: 0 0 10px 0;
+  }
+  .slot-img-link { display: block; }
+  .slot-tag {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 2px 0 8px 0;
+  }
+  .slot-desc {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    margin: 0 0 8px 0;
+  }
+  .slot-desc em { color: var(--text-secondary); font-style: italic; }
+  .slot-caveat {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    background: var(--brand-cream);
+    border-left: 2px solid var(--brand-mid);
+    padding: 7px 10px;
+    margin: 6px 0 10px 0;
+    border-radius: 0 3px 3px 0;
+  }
+  .slot-caveat strong { color: var(--brand-dark); }
+  .slot-download {
+    font-size: 12px;
+    color: var(--link);
+    display: inline-block;
+    margin-top: auto;
+    padding-top: 4px;
+  }
+  .slot-download:hover { text-decoration: underline; }
+
+  .box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin: 16px 0;
+  }
+  .box ul, .box ol { padding-left: 20px; margin: 8px 0; }
+  .box li { margin: 6px 0; font-size: 14px; line-height: 1.55; color: var(--text); }
+  .box li strong { color: var(--text); }
+  .box .caveat {
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--brand-cream);
+    border-left: 2px solid var(--brand-mid);
+    padding: 10px 14px;
+    margin: 12px 0 4px 0;
+    border-radius: 0 3px 3px 0;
+  }
+  .box .caveat strong { color: var(--brand-dark); }
+  .box code { font-family: 'SF Mono', Monaco, monospace; font-size: 12px; background: var(--brand-cream); padding: 1px 5px; border-radius: 3px; }
+
+  .swatch { display: inline-block; padding: 1px 6px; border-radius: 3px; font-family: 'SF Mono', Monaco, monospace; font-size: 11.5px; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  footer code { font-family: 'SF Mono', Monaco, monospace; font-size: 11.5px; background: var(--brand-cream); padding: 1px 5px; border-radius: 3px; color: var(--text-secondary); }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 32px 18px 60px 18px; }
+    h1 { font-size: 24px; }
+    h2 { font-size: 19px; }
+    .slot { padding: 16px 18px 18px 18px; }
+    .slot-title { font-size: 16px; }
+  }
+  @media print {
+    body { background: var(--card); }
+    .slot, .box { break-inside: avoid; }
+    .slot-download { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!--
+    ==========================================================================
+    SKILL TEMPLATE — A/B Secondary Image Creator
+    ==========================================================================
+    Placeholder substitution keys (use string replace when populating):
+
+      {{BRAND_NAME}}        — brand name from brand kit / audit header
+      {{PRODUCT_NAME}}      — product name from audit's per-listing summary
+      {{ASIN}}              — Amazon ASIN
+      {{DATE}}              — ISO date, YYYY-MM-DD
+      {{SLOT_COUNT}}        — number of secondary slots rendered (typically 8)
+      {{MODEL_TALLY}}       — e.g. "marketing_studio_image (slots 3, 4, 6, 9) + nano_banana_flash (slots 2, 5, 7, 8)"
+      {{BRAND_HEX_1..5}}    — brand kit palette hex values (cream / tan / mid / deep / dark)
+      {{AUDIT_ANCHOR}}      — anchor label for the audit source, e.g. "Alexa Shopping & A9 Discoverability Audit YYYY-MM-DD"
+      {{REF_MEDIA_ID_SHORT}} — first 8 chars of the Higgsfield reference media_id
+      {{SLOT_CARDS_HTML}}   — repeated slot-card HTML blocks, one per rendered secondary slot
+      {{IDENTITY_CHECKLIST_ITEMS}} — per-product identity-check list items
+      {{SHIP_ORDER_ITEMS}}  — priority-ordered ship-order list items
+      {{BASELINE_METRICS}}  — extracted from audit's funnel viz (branded CTR / CVR)
+
+    Per-slot card HTML skeleton (repeat inside {{SLOT_CARDS_HTML}}):
+
+      <div class="slot">
+        <div class="slot-title"><span class="slot-num">{{N}}</span>{{TITLE}}</div>
+        <a class="slot-img-link" href="{{FULL_URL}}" target="_blank" rel="noopener">
+          <img class="slot-img" src="{{FULL_URL}}" alt="{{ALT}}">
+        </a>
+        <div class="slot-tag">Slot {{N}} · Gallery · {{TAG}}</div>
+        <p class="slot-desc">{{DESCRIPTION}} <em>Answers: {{ANSWERS_FROM_AUDIT_WHY}}</em></p>
+        {{OPTIONAL_CAVEAT_BLOCK}}
+        <a class="slot-download" href="{{FULL_URL}}" target="_blank" rel="noopener">Download PNG ↓</a>
+      </div>
+
+    Optional caveat block (inject for text-heavy nano_banana_flash slots or compliance-sensitive lifestyle slots):
+
+      <div class="slot-caveat"><strong>{{CAVEAT_LABEL}}:</strong> {{CAVEAT_BODY}}</div>
+  -->
+
+  <div class="brand-strip">
+    Sophie Society <span class="dot">·</span> Listing Image Refresh <span class="dot">·</span> Secondary Images (v2)
+  </div>
+
+  <h1>{{BRAND_NAME}} {{PRODUCT_NAME}} — Secondary Image Refresh</h1>
+
+  <p class="meta">Generated from the {{AUDIT_ANCHOR}} image strategy <span class="dot">·</span> ASIN {{ASIN}} <span class="dot">·</span> {{DATE}}</p>
+  <p class="meta tech">{{SLOT_COUNT}} secondary slots <span class="dot">·</span> Higgsfield <code>marketing_studio_image</code> + <code>nano_banana_flash</code> <span class="dot">·</span> 1:1 <span class="dot">·</span> 2048×2048 <span class="dot">·</span> Brand-kit palette + verbatim audit briefs anchored in every prompt</p>
+
+  <h2>What's in this refresh</h2>
+  <p class="lede">Secondary gallery only — the main image (Slot 1) is not included. Slots rebuilt per the audit's per-listing image-stack table, with the audit's own slot briefs quoted verbatim into every prompt, brand palette hex values passed as hard constraints, and the product reference locked as source-of-truth for silhouette, label, and on-pack copy.</p>
+  <p class="lede">Brand palette locked to the kit: <span class="swatch" style="background:{{BRAND_HEX_1}}; color:{{BRAND_HEX_5}};">{{BRAND_HEX_1}}</span> · <span class="swatch" style="background:{{BRAND_HEX_2}}; color:#fff;">{{BRAND_HEX_2}}</span> · <span class="swatch" style="background:{{BRAND_HEX_3}}; color:#fff;">{{BRAND_HEX_3}}</span> · <span class="swatch" style="background:{{BRAND_HEX_4}}; color:#fff;">{{BRAND_HEX_4}}</span> · <span class="swatch" style="background:{{BRAND_HEX_5}}; color:#fff;">{{BRAND_HEX_5}}</span>. Playfair Display for serif headers, Montserrat for sans body.</p>
+  <p class="lede"><strong>Click any image to open it full-resolution</strong> in a new tab. Right-click to save the PNG. Hi-res Cloudfront URLs are also linked under each card.</p>
+
+  <div class="grid">
+    {{SLOT_CARDS_HTML}}
+  </div>
+
+  <div class="full-width-block">
+
+    <h2>Pre-upload checklist (Rule 4 identity + Rule 7 mobile)</h2>
+    <div class="box">
+      <p class="lede" style="margin-top:4px;">Skim each render against this binary checklist before shipping to the gallery. Any one identity fail on the product → re-roll that slot from scratch (one fresh Higgsfield job; the tightened prompt is preserved in the run log and reusable verbatim).</p>
+      <ul>
+        {{IDENTITY_CHECKLIST_ITEMS}}
+        <li><strong>Mobile thumbnail read (Rule 7).</strong> View each image small (~150px, phone-thumbnail scale): the core idea is still obvious, the headline is still readable, and critical text/product sits clear of the edges. Any slot that turns to mush or unreadable copy at thumbnail scale → re-roll with a bigger headline, fewer words, more negative space.</li>
+      </ul>
+      <div class="caveat"><strong>On-image text caveat.</strong> Higgsfield can silently coerce <code>nano_banana_2</code> → <code>nano_banana_flash</code> on infographic and comparison slots (workspace availability, not a prompt issue). Flash is weaker on small strikethroughs and dense text blocks. If any label reads off at thumbnail scale, render the clean composition and rebuild the typography in Canva or Photoshop — the standard Sophie Society workflow for high-stakes on-image copy. Escalate a single stubborn slot to ChatGPT GPT-image-1 if flash won't hold text after one re-roll.</div>
+    </div>
+
+    <h2>Suggested ship order in the gallery</h2>
+    <div class="box">
+      <ul>
+        {{SHIP_ORDER_ITEMS}}
+      </ul>
+      <p class="lede" style="margin: 12px 0 4px 0;">{{BASELINE_METRICS}}</p>
+    </div>
+
+  </div>
+
+  <footer>
+    Sophie Society <span style="color:var(--text-muted);">·</span> {{BRAND_NAME}} {{PRODUCT_NAME}} Secondary Image Refresh <span style="color:var(--text-muted);">·</span> {{DATE}} <span style="color:var(--text-muted);">·</span> {{SLOT_COUNT}} secondary slots rendered via Higgsfield MCP <span style="color:var(--text-muted);">·</span> {{MODEL_TALLY}} <span style="color:var(--text-muted);">·</span> reference imported once (media_id <code>{{REF_MEDIA_ID_SHORT}}</code>) and reused across all runs <span style="color:var(--text-muted);">·</span> anchored to the audit's per-listing image-stack table ({{AUDIT_ANCHOR}}).
+  </footer>
+
+</div>
+</body>
+</html>

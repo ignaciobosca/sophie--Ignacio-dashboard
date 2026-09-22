@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Brand Kit",
+  "description": "Single source of truth for one brand. Feeds the brand-board template (template-spec.md), the board PDF/PNG, and all downstream generation steps. Everything brand-specific lives here; everything layout-specific lives in the template spec. Canonical output: /creative-brief/<ASIN>/brand-kit.json (optionally also a BRAND.md companion).",
+  "type": "object",
+  "required": ["status", "brand", "logo", "fonts", "palette", "voice", "claims", "moodboard", "patterns", "imagery_direction"],
+  "properties": {
+    "asin": { "type": "string", "description": "Amazon ASIN this kit belongs to, e.g. 'B07XJ8C8F5'. Keys the output folder /creative-brief/<ASIN>/." },
+    "status": {
+      "type": "string",
+      "description": "DRAFT while gathering, CONFIRMED <date> once the owner has locked it against the rendered preview, or 'stub' for an incomplete starter kit.",
+      "pattern": "^(DRAFT|CONFIRMED .+|stub)$"
+    },
+    "brand": {
+      "type": "object",
+      "required": ["name", "category", "mood", "audience"],
+      "properties": {
+        "name": { "type": "string", "description": "Brand name as rendered in the wordmark, e.g. 'Verdant Grove' (lowercase if the logo is lowercase)" },
+        "casing": { "enum": ["lowercase", "uppercase", "titlecase", "mixed"], "description": "How the name is cased in the wordmark" },
+        "tagline_or_suffix": { "type": "string", "description": "Secondary line under wordmark, e.g. 'LONDON'. Empty if none." },
+        "category": { "type": "string", "description": "Product category, e.g. 'cold-pressed argan hair oil'" },
+        "mood": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 6,
+          "description": "3-6 adjectives that steer every generation, e.g. ['botanical', 'warm', 'premium', 'calm']"
+        },
+        "audience": { "type": "string", "description": "Who the brand is for. Drives voice and the moodboard, e.g. 'women 28-45 with textured/dry hair seeking clean, salon-grade care'" }
+      }
+    },
+    "voice": {
+      "type": "object",
+      "description": "How the brand speaks. Drives the board's Voice & Tone section and all downstream copy.",
+      "required": ["adjectives", "sounds_like", "never_sounds_like", "reading_level", "pov"],
+      "properties": {
+        "adjectives": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "3-5 words describing the tone, e.g. ['nurturing', 'grounded', 'confident']"
+        },
+        "sounds_like": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Short example lines the brand WOULD say, e.g. 'Built for real hair, not a lab fantasy.'"
+        },
+        "never_sounds_like": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Phrasings the brand would NEVER use, e.g. 'Miracle cure!', 'Beats every salon brand'"
+        },
+        "reading_level": { "type": "string", "description": "Plain-language target, e.g. 'grade 7, short sentences'" },
+        "pov": { "type": "string", "description": "Point of view, e.g. 'we / you'" }
+      }
+    },
+    "claims": {
+      "type": "object",
+      "description": "What the brand may and may not say. Drives the board's Claims section.",
+      "required": ["required", "forbidden", "disclaimers"],
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Claims that should appear, e.g. 'Cruelty-free', 'Cold-pressed argan oil'"
+        },
+        "forbidden": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Claims to avoid, e.g. 'medical / treats conditions', 'superlatives (best, #1)', 'competitor comparisons'"
+        },
+        "disclaimers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required fine print, e.g. 'Results vary. For external use only.'"
+        }
+      }
+    },
+    "logo": {
+      "type": "object",
+      "required": ["style", "case", "status"],
+      "properties": {
+        "style": { "type": "string", "description": "Wordmark description, e.g. 'serif wordmark with a hand-drawn leaf ligature on the V'" },
+        "monogram": { "type": "string", "description": "Monogram/icon description if one exists, e.g. 'gold leaf mark in a circle'. Empty if wordmark-only." },
+        "case": { "enum": ["lowercase", "uppercase", "titlecase", "mixed"] },
+        "prefers_dark_bg": { "type": "boolean", "default": false, "description": "true only if primary logo is light/metallic and needs a dark header band" },
+        "asset": { "type": "string", "description": "Real file path to the supplied logo image, placed directly on the board. Empty/null if no logo image exists yet." },
+        "status": { "enum": ["FINAL", "PLACEHOLDER"], "description": "FINAL when a real logo image is placed; PLACEHOLDER while the board uses a typeset stand-in." }
+      }
+    },
+    "fonts": {
+      "type": "object",
+      "required": ["special", "main"],
+      "description": "Two roles: SPECIAL (display/headings) and MAIN (body). Each is a structured object, not a bare string.",
+      "properties": {
+        "special": { "$ref": "#/definitions/font" },
+        "main": { "$ref": "#/definitions/font" }
+      }
+    },
+    "palette": {
+      "type": "object",
+      "required": ["lightest", "slot2", "slot3", "dark", "darkest"],
+      "description": "Exactly 5 hex colors, uppercase #RRGGBB, ordered light to dark (luminance order, NOT semantic roles).",
+      "properties": {
+        "lightest": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "slot2": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "slot3": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "dark": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "darkest": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "accent_primary": { "type": "string", "description": "Which slot is the hero accent (used for logo-variation block 1), e.g. 'slot3'" }
+      }
+    },
+    "moodboard": {
+      "type": "object",
+      "required": ["hero", "lifestyle", "context", "closeup"],
+      "properties": {
+        "hero": { "type": "string", "description": "Prompt brief for the studio product shot" },
+        "lifestyle": { "type": "string", "description": "Prompt brief for the person-using-product shot" },
+        "context": { "type": "string", "description": "Prompt brief for the environment/world shot" },
+        "closeup": { "type": "string", "description": "Prompt brief for the macro product-in-use shot" },
+        "grading": { "type": "string", "description": "Shared color-grade note applied to all four, e.g. 'warm earth tones, brand accents visible in frame'" }
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["motif", "tonality"],
+        "properties": {
+          "motif": { "type": "string", "description": "Pattern description tied to the product, e.g. 'fine line-drawn argan-leaf lattice'" },
+          "tonality": { "enum": ["dark", "light"], "description": "Background tonality. The two patterns MUST be opposite." }
+        }
+      }
+    },
+    "imagery_direction": {
+      "type": "object",
+      "description": "Photo direction drawn from the real product photos. Complements the AI moodboard grid.",
+      "required": ["lean_in", "avoid"],
+      "properties": {
+        "lean_in": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Visual qualities to favor, e.g. 'natural light', 'warm earth tones', 'real hair texture'"
+        },
+        "avoid": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Visual qualities to stay away from, e.g. 'clinical white labs', 'neon / oversaturation', 'visible text in frame'"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "font": {
+      "type": "object",
+      "required": ["name", "role"],
+      "properties": {
+        "name": { "type": "string", "description": "Font family name, e.g. 'Cormorant Garamond'" },
+        "role": { "enum": ["display", "body"], "description": "display for SPECIAL, body for MAIN" },
+        "caps_only": { "type": "boolean", "default": false, "description": "true for caps-only display faces; the specimen drops the lowercase row" },
+        "google": {
+          "type": "object",
+          "description": "How to pull the font from Google Fonts, when available.",
+          "properties": {
+            "available": { "type": "boolean", "description": "true if the family is on Google Fonts and can be fetched from the name" },
+            "family_slug": { "type": "string", "description": "Google Fonts family slug, e.g. 'cormorant-garamond'" },
+            "weights": { "type": "array", "items": { "type": "number" }, "description": "Weights to load, e.g. [500, 600]" }
+          }
+        },
+        "file": { "type": ["string", "null"], "description": "Path to the supplied font file when one was uploaded, else null" },
+        "license": { "type": "string", "description": "License note, e.g. 'OFL (commercial-safe)'. Flag any non-commercial-only license to the owner." }
+      }
+    }
+  }
+}

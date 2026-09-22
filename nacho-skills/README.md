@@ -37,11 +37,20 @@ Feeders → Supabase (`dashboard_snapshots`) → composer → GitHub Pages.
 ### `skills/reporting/` — reporting 🔧 (rebuild)
 - `monthly-report`
 
-### `skills/listing/` — listing/creative 🔧 (rebuild)
-- `listing-juice-new` (rebuild pesado), `amazon-title-optimizer` (liviano)
+### `skills/listing/` — listing
+- `listing-juice-new` 🔧 (rebuild pesado), `amazon-title-optimizer` 🔧 (liviano), `listing-writer-v2` 🏷️ (re-brand)
 
 ### `skills/research/` — research 🔧 (rebuild)
 - `bundle-crosssell-finder`
+
+### `skills/creative/` — imágenes / A+ 🏷️ (re-brand)
+- `amazon-hero-image-v12`, `amazon-ab-testing-all-in-one`, `ab-secondary-image-creator`, `primary-image-hypotheses`, `aplus-plan-per-banner`, `brand-story-plan`
+
+### `skills/brand/` — branding 🏷️ (base multi-tenant)
+- `brand-kit` (base del branding por agencia), `brand-identity-board`
+
+> El grupo 🏷️ (listing/creativos) y sus decisiones keep/drop están en
+> **`docs/rebrand-decisions.md`**. No dependen de Sophie Hub: solo re-brand vía `brand-kit`.
 
 > Las skills 🔧 que se rebuildean (y las que se descartaron) están en
 > **`docs/rebuild-decisions.md`**, con el mapa Sophie Hub → SHURQ/Helium10/Keepa/DataDive,

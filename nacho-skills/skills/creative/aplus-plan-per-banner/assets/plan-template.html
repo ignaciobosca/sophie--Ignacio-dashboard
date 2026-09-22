@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A+ Premium Plan — {{BRAND / PRODUCT}}</title>
+<!--
+  HOW TO USE THIS TEMPLATE
+  - Sophie Society design system, trimmed for an A+ Premium build plan.
+  - Elements in order: 3 Banners (each = 2 modules) → FAQ module → Cross-Promotion table.
+  - Each module block: copy + a NOTES / DESIGN GUIDANCE callout. Banners also get a verbatim
+    image prompt in the <pre>.
+  - Fill copy, notes, prompts; delete these comments and all {{PLACEHOLDERS}} before delivering.
+  - HARD RULES in the copy: no competitor brand names, NO em-dashes, no AI phrases, exact brand
+    name, verbatim S&S/review quotes from screenshots (never invented), FAQ questions ≤ 50 chars.
+-->
+<style>
+  :root { --navy:#0A2333; --off-white:#F3F3F1; --white:#FFF; --text:#212121; --text-secondary:#666;
+    --green:#13835B; --orange:#EA6C34; --peach:#F9C8A5; --light-peach:#FDE5CF; --light-blue:#C2D9E6;
+    --soft-cream:#FAF9F5; --border:#E6E6E6; --r-sm:4px; --r-md:8px; --r-lg:12px; }
+  * { box-sizing:border-box; }
+  body { font-family:'Inter','DM Sans',-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;
+    background:var(--off-white); color:var(--text); font-size:16px; line-height:1.6; margin:0; }
+  .container { max-width:1000px; margin:0 auto; padding:40px 28px; }
+  header { background:var(--navy); color:var(--white); padding:40px 28px; }
+  header .inner { max-width:1000px; margin:0 auto; }
+  header .eyebrow { font-size:12px; color:var(--peach); text-transform:uppercase; letter-spacing:.12em; font-weight:700; margin-bottom:8px; }
+  header h1 { margin:0 0 4px 0; font-size:30px; line-height:1.15; }
+  header .subtitle { opacity:.85; font-size:15px; }
+  h2 { font-size:26px; font-weight:700; color:var(--navy); margin:8px 0 4px 0; }
+  h3 { font-size:20px; font-weight:700; color:var(--navy); margin:0 0 4px 0; }
+  h4 { font-size:15px; font-weight:700; color:var(--navy); margin:16px 0 4px; text-transform:uppercase; letter-spacing:.04em; }
+  .card { background:var(--white); border:1px solid var(--border); border-radius:var(--r-lg); padding:22px 26px; margin:16px 0; box-shadow:0 2px 8px rgba(10,35,51,.08); }
+  .element { margin:28px 0; }
+  .element-head { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+  .num { background:var(--navy); color:var(--white); font-size:14px; font-weight:700; width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .element.banner .num { background:var(--orange); }
+  .element.faq .num { background:var(--green); }
+  .element.xsell .num { background:#7a4fd6; }
+  .module-tag { font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.08em; font-weight:700; }
+  .pill { display:inline-block; padding:3px 11px; border-radius:999px; font-size:12px; font-weight:700; margin:2px 4px 2px 0; }
+  .pill.dim { background:var(--light-blue); color:var(--navy); }
+  .pill.layout { background:var(--soft-cream); color:var(--text-secondary); border:1px solid var(--border); }
+  .copy-block { background:var(--soft-cream); border-left:4px solid var(--orange); padding:14px 18px; border-radius:0 var(--r-md) var(--r-md) 0; margin:12px 0; }
+  .copy-block .label-mini { font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.06em; font-weight:700; margin-bottom:4px; }
+  .copy-block .headline { font-size:17px; font-weight:700; color:var(--navy); }
+  .copy-block .body { font-size:15px; }
+  .notes { background:#fff7e6; border:1px solid var(--orange); border-radius:var(--r-md); padding:12px 16px; margin:12px 0; font-size:13.5px; color:#8b5a00; }
+  .notes b { color:#7a4a00; }
+  .faq-pair { border-bottom:1px dashed var(--border); padding:9px 0; }
+  .faq-pair:last-child { border-bottom:none; }
+  .faq-pair .q { font-weight:700; color:var(--navy); font-size:15px; }
+  .faq-pair .charcount { font-size:11px; color:var(--text-secondary); font-family:monospace; }
+  .faq-pair .a { font-size:14px; margin-top:2px; }
+  table.cmp { width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; }
+  table.cmp th, table.cmp td { border-bottom:1px solid var(--border); padding:8px 10px; text-align:left; vertical-align:top; }
+  table.cmp th { background:var(--off-white); color:var(--navy); font-size:12px; }
+  pre { background:var(--navy); color:#e8eef2; padding:16px 18px; border-radius:var(--r-md); overflow-x:auto; font-family:'SF Mono',Monaco,'Courier New',monospace; font-size:13px; line-height:1.55; white-space:pre-wrap; }
+  .callout { padding:12px 16px; border-radius:var(--r-md); margin:12px 0; font-size:14px; }
+  .callout.info { background:var(--light-blue); border:1px solid #a8c5d6; color:var(--navy); }
+  .callout.warning { background:#fff7e6; border:1px solid var(--orange); color:#8b5a00; }
+  footer { background:var(--navy); color:var(--white); padding:32px 28px; margin-top:48px; font-size:13px; }
+  footer .inner { max-width:1000px; margin:0 auto; opacity:.75; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <div class="eyebrow">Amazon A+ Premium · Build Plan</div>
+    <h1>{{BRAND / PRODUCT}} — A+ Premium Plan</h1>
+    <div class="subtitle">{{PRODUCT (ASIN)}} · {{CATEGORY}} · 2 banners + FAQ + Cross-Promotion</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>The page arc</h2>
+    <p>{{2–3 sentences: the flow across the 2 banners (B1 hook/benefit/vs-them, B2 details/value/proof), plus FAQ and cross-sell.}}</p>
+    <div class="callout info">Compliance category screened: <strong>{{CATEGORY}}</strong> (A+ / Infographic). No competitor brand names, no em-dashes, no AI phrases; brand name matches the listing.</div>
+    <div class="callout warning"><strong>How to use these prompts.</strong> Each banner prompt needs a picture of your product — the text alone won't know what it looks like. For every banner: <strong>paste the prompt AND attach your product photo(s)</strong> (main image + raw angles). Paste into a reference-image model — <strong>Higgsfield</strong> (<code>nano_banana_pro</code> supports the banner <strong>5:4</strong> ratio; <code>gpt_image_2</code> sharpest text, no 5:4 → use 4:3) or <strong>ChatGPT / GPT Image</strong> or <strong>Google Nano Banana</strong>. Generate each banner in <strong>both sizes</strong> at ≥1K (2K ideal): <strong>Mobile 600 × 900</strong> (2:3, text mobile-optimized, nothing below 30 px) and <strong>Desktop 1464 × 1200</strong> (~5:4). <strong>Split step:</strong> upload each finished banner to <a href="https://splitter.imageonline.co/">splitter.imageonline.co</a> and split into its two halves (top + bottom) — mobile → <strong>2× 600 × 450</strong>, desktop → <strong>2× 1464 × 600</strong>.</div>
+  </div>
+
+  <!-- ============ BANNER BLOCK (duplicate for Banners 1–3) ============ -->
+  <section class="element banner">
+    <div class="element-head"><span class="num">1</span><div><h3>Banner 1 — Hero + Transformational</h3><span class="module-tag">Premium banner · 📱 Mobile 600×900 + 🖥️ Desktop 1464×1200</span></div></div>
+    <div class="card">
+      <span class="pill dim">📱 600 × 900 → 2× 600 × 450</span>
+      <span class="pill dim">🖥️ 1464 × 1200 → 2× 1464 × 600</span>
+      <span class="pill layout">Layout: {{layout name #}}</span>
+
+      <h4>Module 1 — Hero</h4>
+      <div class="copy-block">
+        <div class="label-mini">Headline (exact product name)</div>
+        <div class="headline">{{Product name}}</div>
+        <div class="label-mini" style="margin-top:8px;">Tagline (8–12 words, strongest benefit)</div>
+        <div class="body">{{tagline}}</div>
+      </div>
+
+      <h4>Module 2 — Transformational</h4>
+      <div class="copy-block">
+        <div class="body">{{2–3 short paragraphs / 4–6 punchy lines — emotional pitch to the buyer persona}}</div>
+      </div>
+
+      <div class="notes"><b>Notes / Design Guidance:</b> {{layout direction; which photo; compose as two stacked bands so it splits cleanly; any flags}}</div>
+
+      <div class="label-mini" style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">📱 Mobile prompt — 600 × 900 (→ 2× 600 × 450)</div>
+      <pre>{{FULL STEP 1 / STEP 2 BANNER PROMPT — MOBILE. Same copy. [Aspect Ratio]: 2:3, [Typography]: mobile-optimized, nothing below 30 px, [Dimensions]: 600 × 900 px (split to 2× 600 × 450)}}</pre>
+
+      <div class="label-mini" style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">🖥️ Desktop prompt — 1464 × 1200 (→ 2× 1464 × 600)</div>
+      <pre>{{FULL STEP 1 / STEP 2 BANNER PROMPT — DESKTOP. Same copy. [Aspect Ratio]: ~5:4, [Dimensions]: 1464 × 1200 px (split to 2× 1464 × 600)}}</pre>
+    </div>
+  </section>
+  <!-- Repeat for Banner 2 = Module 3 (Us vs Them, bullet or prose) + Module 4 (Product Detail,
+       1–2 sub-modules), and Banner 3 = Module 5 (Disclaimer OR Value) + Module 6 (S&S OR Good
+       Reviews). Mark Module 5 disclaimer-vs-value and Module 6 S&S-vs-reviews in the Notes cell.
+       3 banners total. Mobile prompt first on each. -->
+
+  <!-- ============ 7-MODULE CHOICE: FAQ *OR* CROSS-PROMOTION ============ -->
+  <div class="callout warning" style="max-width:1000px;margin:24px auto;"><b>Choose ONE of the next two modules.</b> Premium A+ allows up to 7 modules. Your 3 banners upload as 6 images (each 1464×1200 splits into two), leaving one slot. Keep <b>either</b> the FAQ <b>or</b> the Cross-Promotion table below, not both.</div>
+
+  <!-- ============ FAQ MODULE (option A) ============ -->
+  <section class="element faq">
+    <div class="element-head"><span class="num">7</span><div><h3>Module 7 — FAQ</h3><span class="module-tag">Text module · from review threads</span></div></div>
+    <div class="card">
+      <div class="faq-pair"><div class="q">{{Q1 ≤50 chars}}</div><span class="charcount">{{n}}/50</span><div class="a">{{answer, 1–3 sentences}}</div></div>
+      <div class="faq-pair"><div class="q">{{Q2 ≤50 chars}}</div><span class="charcount">{{n}}/50</span><div class="a">{{answer}}</div></div>
+      <div class="faq-pair"><div class="q">{{Q3 ≤50 chars}}</div><span class="charcount">{{n}}/50</span><div class="a">{{answer}}</div></div>
+      <div class="faq-pair"><div class="q">{{Q4 ≤50 chars}}</div><span class="charcount">{{n}}/50</span><div class="a">{{answer}}</div></div>
+      <div class="notes"><b>Notes / Design Guidance:</b> Every question counted ≤ 50 chars. Sourced from competitor review threads / claims-to-verify. {{any flags}}</div>
+    </div>
+  </section>
+
+  <!-- ============ CROSS-PROMOTION (Premium Comparison Table) ============ -->
+  <section class="element xsell">
+    <div class="element-head"><span class="num">8</span><div><h3>Cross-Promotion — Premium Comparison Table</h3><span class="module-tag">3–6 ASINs · Amazon pulls each image (200:225)</span></div></div>
+    <div class="card">
+      <div class="copy-block"><div class="label-mini">Headline</div><div class="headline">{{e.g. "Complete your routine"}}</div></div>
+      <table class="cmp">
+        <tr><th>Metric</th><th>{{Hero title}}</th><th>{{Product 2}}</th><th>{{Product 3}}</th><th>{{Product 4 (opt)}}</th></tr>
+        <tr><td>{{Feature 1}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td></tr>
+        <tr><td>{{Feature 2}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td></tr>
+        <tr><td>{{Feature 3}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td></tr>
+        <tr><td>{{Feature 4}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td></tr>
+        <tr><td>{{Feature 5}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td><td>{{}}</td></tr>
+      </table>
+      <p style="font-size:13px;color:var(--text-secondary);">ASINs: {{list 3–6}} · Toggles: Show reviews / Show prices / Add-to-cart — {{seller preference}}</p>
+      <div class="notes"><b>Notes / Design Guidance:</b> 3–6 products (min 3 / max 6), ≥5 features each. <b>No images to render or upload</b> — Seller Central auto-populates each product's image (200:225) and title from the ASIN. Just enter the ASINs. {{flags}}</div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="inner">
+    A+ Premium plan for {{BRAND}} · {{CATEGORY}} · Prepared with the aplus-premium-plan skill ·
+    Banners briefed at ≥1K, export to 1464 × 1200. Verbatim modules (S&S, review quotes) must come from real screenshots. Re-check copy against live category rules before upload.
+  </div>
+</footer>
+
+</body>
+</html>
