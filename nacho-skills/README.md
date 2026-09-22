@@ -34,6 +34,10 @@ Feeders → Supabase (`dashboard_snapshots`) → composer → GitHub Pages.
 - `client-reply-drafter` 🔧 (Sophie Hub), `slack-channel-review`, `inbox-triage`
 - `client-changelog` (mové la DB de Notion), `morning`, `personal-assistant-skill`
 
+### `skills/reporting/` — reporting 🔧 (dependen de Sophie Hub → rebuild)
+- `monthly-report`, `account-performance-dashboard`, `weekly-exec-summary-hub-v2`
+- Ver **`skills/reporting/REBUILD-NOTES.md`**: mapa tool-por-tool de Sophie Hub → SHURQ/Helium10/Keepa/DataDive y el gap de Subscribe & Save.
+
 ## Antes de instalarlas
 Leé **`MIGRATION-NOTES.md`**: lista el find/replace concreto (canales de Slack,
 POD 66, link de GitHub Pages, tablas de Supabase) y qué skills necesitan cortar

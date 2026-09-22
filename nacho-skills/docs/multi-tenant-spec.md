@@ -101,7 +101,7 @@ qué credenciales (`secrets[agency_id]`).
 | Secret | Scope | Dónde |
 |---|---|---|
 | Supabase `service_role` | por proyecto | secret del entorno |
-| SHURQ token | por agencia (o global si es tu cuenta) | secret, mapeado por `agency_id` |
+| SHURQ token | **global (cuenta única de Nacho)** | 1 secret; las cuentas Amazon de cada cliente cuelgan de tu SHURQ |
 | Slack token | por workspace/agencia | secret |
 | ClickUp token | por workspace/agencia | secret |
 | Drive/otros | por agencia | secret |
@@ -149,13 +149,15 @@ Lo que hoy está fijo (ver `MIGRATION-NOTES.md`) pasa a la DB:
 
 ---
 
-## 8. Decisiones abiertas (para vos)
+## 8. Decisiones
 
-1. **¿SHURQ es tu cuenta única o una por agencia?** Define si el token SHURQ es global
-   o mapeado por `agency_id`.
-2. **¿Un Supabase para todas las agencias, o uno por agencia?** Recomiendo **uno solo
-   multi-tenant** (más simple de operar); uno por agencia solo si un cliente exige
-   aislamiento de datos por contrato.
+**Resueltas:**
+1. ✅ **SHURQ = cuenta única de Nacho** (token global, 1 secret). Las cuentas de Amazon
+   de cada cliente se conectan bajo tu SHURQ; no se mapea por `agency_id`.
+2. ✅ **Un solo Supabase multi-tenant** para todas las agencias, separado por `agency_id`.
+   Nada de un proyecto por agencia.
+
+**Abiertas:**
 3. **¿Dashboards: un repo Pages por agencia o uno con subcarpetas?** Subcarpetas
    (`/acme/`, `/otra/`) es más simple; repos separados si querés permisos distintos.
 4. **Idioma de reporte:** ya existe `report_language` en config — default por `brand_kit`.
