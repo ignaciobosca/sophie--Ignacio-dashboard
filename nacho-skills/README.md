@@ -8,53 +8,20 @@ las llevo a mi repo `nacho-skills/` propio y las instalo en mi entorno Claude.
 > Tarea de seguimiento: ClickUp → POD 66 → Interno → PPC Tasks →
 > "🚀 Migración de procesos a entorno propio (Nacho)".
 
-## Qué hay acá (Fase 1 — ✅ "portá tal cual")
+## Qué hay acá — triage COMPLETO
 
-Skills cuyo stack ya tengo en el entorno nuevo (SHURQ + Supabase + Slack/ClickUp).
-No dependen de Sophie Hub salvo las marcadas 🔧 en `MIGRATION-NOTES.md`.
+De **96 skills** en Sophie, me llevo **42** (24 ✅ portá tal cual · 8 🔧 rebuild · 10 🏷️ re-brand).
+Organizadas en `skills/` por grupo: master-dashboard, ppc-ops, comms-workflow,
+reporting, listing, research, creative, brand, setup.
 
-### `skills/master-dashboard/` — el sistema de dashboard (mi arquitectura)
-Feeders → Supabase (`dashboard_snapshots`) → composer → GitHub Pages.
-- `master-dashboard-supabase` — composer de los 7 tabs + publish a GitHub Pages
-- `daily-check-dashboard-supabase`
-- `daily-check-client-supabase`
-- `daily-negatives-supabase`
-- `daily-harvest-supabase`
-- `daily-restock-supabase` 🔧 (Sophie Hub)
+➡️ **La lista completa, con tag por skill y orden de arranque, está en
+[`docs/INVENTORY.md`](docs/INVENTORY.md).** Es la fuente de verdad.
 
-### `skills/ppc-ops/` — operativa PPC sobre SHURQ
-- `weekly-report`, `weekly-wins`
-- `search-term-harvest`
-- `negative-targeting`, `daily-negatives-autopush`, `weekly-negatives-review`, `shurq-push-negatives`
-- `biweekly-bid-optimizer`, `sp-sb-bulk-bid-optimizer` 🔧 (Sophie Hub)
-- `launch-sponsored-products` 🔧 (Sophie Hub)
-- `kw-harvester-negator` 🔧 (Sophie Hub)
-
-### `skills/comms-workflow/` — comms y flujo diario
-- `client-reply-drafter` 🔧, `client-onboarding` 🔧 (crea la config en Supabase), `slack-channel-review`, `inbox-triage`
-- `client-changelog` (mové la DB de Notion), `morning`, `personal-assistant-skill`
-
-### `skills/reporting/` — reporting 🔧 (rebuild)
-- `monthly-report`
-
-### `skills/listing/` — listing
-- `listing-juice-new` 🔧 (rebuild pesado), `amazon-title-optimizer` 🔧 (liviano), `listing-writer-v2` 🏷️ (re-brand)
-
-### `skills/research/` — research 🔧 (rebuild)
-- `bundle-crosssell-finder`
-
-### `skills/creative/` — imágenes / A+ 🏷️ (re-brand)
-- `amazon-hero-image-v12`, `amazon-ab-testing-all-in-one`, `ab-secondary-image-creator`, `primary-image-hypotheses`, `aplus-plan-per-banner`, `brand-story-plan`
-
-### `skills/brand/` — branding 🏷️ (base multi-tenant)
-- `brand-kit` (base del branding por agencia), `brand-identity-board`
-
-> El grupo 🏷️ (listing/creativos) y sus decisiones keep/drop están en
-> **`docs/rebrand-decisions.md`**. No dependen de Sophie Hub: solo re-brand vía `brand-kit`.
-
-> Las skills 🔧 que se rebuildean (y las que se descartaron) están en
-> **`docs/rebuild-decisions.md`**, con el mapa Sophie Hub → SHURQ/Helium10/Keepa/DataDive,
-> el orden de cutover y el gap de Subscribe & Save. Decidido una-por-una con Nacho.
+Registros de decisión (revisado una-por-una con Nacho):
+- `docs/rebuild-decisions.md` — las 🔧 (cutover Sophie Hub) + mapa de reemplazo.
+- `docs/rebrand-decisions.md` — las 🏷️ (branding vía brand-kit).
+- `docs/utilities-comms-decisions.md` — research liviano / utilidades / comms.
+- `docs/multi-tenant-spec.md` — cómo una base de skills sirve a varias agencias.
 
 ## Antes de instalarlas
 Leé **`MIGRATION-NOTES.md`**: lista el find/replace concreto (canales de Slack,

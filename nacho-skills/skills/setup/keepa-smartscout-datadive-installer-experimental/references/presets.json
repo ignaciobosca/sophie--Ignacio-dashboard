@@ -1,0 +1,33 @@
+{
+  "presets": {
+    "keepa": {
+      "repo_url": "https://github.com/BWB03/keepa-adapter.git",
+      "dir_name": "keepa-adapter",
+      "entry_path": "dist/index.js",
+      "env_var": "KEEPA_API_KEY",
+      "display_name": "Keepa",
+      "build_cmd": "npm run build",
+      "extra_env": {
+        "KEEPA_DB_PATH": "${TOOLS_DIR}/${dir_name}/keepa.db",
+        "KEEPA_DEFAULT_DOMAIN": "com"
+      },
+      "extra_env_note": "BWB03/keepa-adapter opens a SQLite DB on startup. Default ./keepa.db fails with SQLITE_CANTOPEN when Claude Desktop spawns the MCP, because the cwd isn't writable. KEEPA_DB_PATH must be an absolute path. Both install scripts set this automatically."
+    },
+    "datadive": {
+      "repo_url": "https://github.com/BWB03/datadive-adapter.git",
+      "dir_name": "datadive-adapter",
+      "entry_path": "dist/index.js",
+      "env_var": "DATADIVE_API_KEY",
+      "display_name": "DataDive",
+      "build_cmd": "npm run build"
+    },
+    "smartscout": {
+      "repo_url": "https://github.com/BWB03/smartscout-adapter.git",
+      "dir_name": "smartscout-adapter",
+      "entry_path": "dist/index.js",
+      "env_var": "SMARTSCOUT_API_KEY",
+      "display_name": "SmartScout",
+      "build_cmd": "npm run build"
+    }
+  }
+}
